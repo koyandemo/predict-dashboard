@@ -9,6 +9,7 @@ import Leagues from "./pages/Leagues";
 import Teams from "./pages/Teams";
 import Matches from "./pages/Matches";
 import Analytics from "./pages/Analytics";
+import MatchDetail from "./pages/MatchDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               </DashboardLayout>
             }
           />
+          <Route path="/match/:matchId" element={<MatchDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
