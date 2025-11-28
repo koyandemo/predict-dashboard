@@ -51,16 +51,19 @@ export type Database = {
           country: string
           league_id: number
           name: string
+          slug: string | null
         }
         Insert: {
           country: string
           league_id?: number
           name: string
+          slug?: string | null
         }
         Update: {
           country?: string
           league_id?: number
           name?: string
+          slug?: string | null
         }
         Relationships: []
       }
@@ -104,6 +107,7 @@ export type Database = {
           match_date: string
           match_id: number
           match_time: string
+          slug: string | null
           status: string | null
           venue: string | null
         }
@@ -114,6 +118,7 @@ export type Database = {
           match_date: string
           match_id?: number
           match_time: string
+          slug?: string | null
           status?: string | null
           venue?: string | null
         }
@@ -124,6 +129,7 @@ export type Database = {
           match_date?: string
           match_id?: number
           match_time?: string
+          slug?: string | null
           status?: string | null
           venue?: string | null
         }
@@ -189,6 +195,7 @@ export type Database = {
           logo_url: string | null
           name: string
           short_code: string
+          slug: string | null
           team_id: number
         }
         Insert: {
@@ -196,6 +203,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           short_code: string
+          slug?: string | null
           team_id?: number
         }
         Update: {
@@ -203,6 +211,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           short_code?: string
+          slug?: string | null
           team_id?: number
         }
         Relationships: []
@@ -244,7 +253,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      slugify: { Args: { text_input: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
