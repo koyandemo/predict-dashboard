@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -42,6 +43,7 @@ export default function Matches() {
     match_time: "",
     venue: "",
     status: "Upcoming",
+    allow_draw: true,
   });
 
   const { data: matches, isLoading } = useQuery({
@@ -147,6 +149,7 @@ export default function Matches() {
       match_time: formData.match_time,
       venue: formData.venue,
       status: formData.status,
+      allow_draw: formData.allow_draw,
     };
 
     if (editingMatch) {
@@ -166,6 +169,7 @@ export default function Matches() {
       match_time: match.match_time,
       venue: match.venue || "",
       status: match.status,
+      allow_draw: match.allow_draw ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -181,6 +185,7 @@ export default function Matches() {
       match_time: "",
       venue: "",
       status: "Upcoming",
+      allow_draw: true,
     });
   };
 
@@ -333,6 +338,32 @@ export default function Matches() {
                   placeholder="e.g., Emirates Stadium"
                 />
               </div>
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="allow_draw">Allow Draw</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Turn off for finals/knockout matches
+                  </p>
+                </div>
+                <Switch
+                  id="allow_draw"
+                  checked={formData.allow_draw}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, allow_draw: checked })
+                  }
+                />
+              </div>
+              {editingMatch && (
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug (auto-generated)</Label>
+                  <Input
+                    id="slug"
+                    value={editingMatch.slug || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+              )}
               <div className="flex gap-2 justify-end">
                 <Button
                   type="button"

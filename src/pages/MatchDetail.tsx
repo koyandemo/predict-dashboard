@@ -27,7 +27,7 @@ export default function MatchDetail() {
         .from("matches")
         .select("*, leagues(name), home_team:teams!matches_home_team_id_fkey(name, logo_url, short_code), away_team:teams!matches_away_team_id_fkey(name, logo_url, short_code)")
         .eq("match_id", matchIdNum)
-        .single();
+        .maybeSingle();
       
       if (matchError) throw matchError;
       return matchData;
@@ -251,7 +251,7 @@ export default function MatchDetail() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${match.allow_draw !== false ? "grid-cols-3" : "grid-cols-2"}`}>
             <Button
               variant="outline"
               className="h-auto flex-col gap-2 p-6 hover:bg-green-500/10 hover:border-green-500"
@@ -268,14 +268,16 @@ export default function MatchDetail() {
               <div className="text-2xl font-bold text-green-500">{homePercent}%</div>
             </Button>
 
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 p-6 hover:bg-muted"
-              onClick={() => voteMutation.mutate("draw")}
-            >
-              <div className="text-sm font-medium text-muted-foreground">Draw</div>
-              <div className="text-2xl font-bold">{drawPercent}%</div>
-            </Button>
+            {match.allow_draw !== false && (
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-2 p-6 hover:bg-muted"
+                onClick={() => voteMutation.mutate("draw")}
+              >
+                <div className="text-sm font-medium text-muted-foreground">Draw</div>
+                <div className="text-2xl font-bold">{drawPercent}%</div>
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -297,12 +299,12 @@ export default function MatchDetail() {
           {/* Progress bar */}
           <div className="flex h-2 rounded-full overflow-hidden">
             <div className="bg-green-500" style={{ width: `${homePercent}%` }} />
-            <div className="bg-muted" style={{ width: `${drawPercent}%` }} />
+            {match.allow_draw !== false && <div className="bg-muted" style={{ width: `${drawPercent}%` }} />}
             <div className="bg-blue-500" style={{ width: `${awayPercent}%` }} />
           </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className={`flex justify-between text-xs text-muted-foreground ${match.allow_draw !== false ? "" : "px-12"}`}>
             <span>{match.home_team?.short_code}</span>
-            <span>Draw</span>
+            {match.allow_draw !== false && <span>Draw</span>}
             <span>{match.away_team?.short_code}</span>
           </div>
         </Card>

@@ -165,6 +165,17 @@ export default function Leagues() {
                   required
                 />
               </div>
+              {editingLeague && (
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug (auto-generated)</Label>
+                  <Input
+                    id="slug"
+                    value={editingLeague.slug || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+              )}
               <div className="flex gap-2 justify-end">
                 <Button
                   type="button"
