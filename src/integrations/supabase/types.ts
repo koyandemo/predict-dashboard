@@ -101,6 +101,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          allow_draw: boolean | null
           away_team_id: number | null
           home_team_id: number | null
           league_id: number | null
@@ -112,6 +113,7 @@ export type Database = {
           venue: string | null
         }
         Insert: {
+          allow_draw?: boolean | null
           away_team_id?: number | null
           home_team_id?: number | null
           league_id?: number | null
@@ -123,6 +125,7 @@ export type Database = {
           venue?: string | null
         }
         Update: {
+          allow_draw?: boolean | null
           away_team_id?: number | null
           home_team_id?: number | null
           league_id?: number | null
