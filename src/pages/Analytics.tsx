@@ -1,31 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import * as leagueService from "@/services/leagueService";
+import * as matchService from "@/services/matchService";
+import * as userService from "@/services/userService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, BarChart3 } from "lucide-react";
+import { Trophy, Users, Calendar, BarChart3, User } from "lucide-react";
 
 export default function Analytics() {
   const { data: stats } = useQuery({
     queryKey: ["analytics"],
     queryFn: async () => {
-      const [leagues, teams, matches, predictions] = await Promise.all([
-        supabase.from("leagues").select("*", { count: "exact", head: true }),
-        supabase.from("teams").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }),
-        supabase
-          .from("user_predictions")
-          .select("*", { count: "exact", head: true }),
+      const [leaguesCount, teamsCount, matchesCount, predictionsCount, users] = await Promise.all([
+        leagueService.getLeaguesCount(),
+        leagueService.getTeamsCount(),
+        matchService.getMatchesCount(),
+        userService.getPredictionsCount(),
+        userService.getAllUsers(),
       ]);
 
       return {
-        leagues: leagues.count || 0,
-        teams: teams.count || 0,
-        matches: matches.count || 0,
-        predictions: predictions.count || 0,
+        leagues: leaguesCount,
+        teams: teamsCount,
+        matches: matchesCount,
+        predictions: predictionsCount,
+        users: users.success ? users.data?.length || 0 : 0,
       };
     },
   });
 
   const statCards = [
+    {
+      title: "Total Users",
+      value: stats?.users || 0,
+      icon: User,
+      color: "text-blue-500",
+    },
     {
       title: "Total Leagues",
       value: stats?.leagues || 0,
@@ -61,7 +69,7 @@ export default function Analytics() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

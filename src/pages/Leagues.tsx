@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,38 +20,39 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import * as leagueService from "@/services/leagueService";
 
 export default function Leagues() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLeague, setEditingLeague] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: "", country: "" });
+  const [formData, setFormData] = useState({ name: "", country: "", logo_url: "" });
 
-  const { data: leagues, isLoading } = useQuery({
+  const { data: leagues, isLoading, error } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leagues")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
+      console.log("Fetching leagues from service...");
+      const response = await leagueService.getAllLeagues();
+      console.log("Received response from service:", response);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; country: string }) => {
-      const { error } = await supabase.from("leagues").insert([data]);
-      if (error) throw error;
+    mutationFn: async (data: { name: string; country: string; logo_url?: string }) => {
+      const response = await leagueService.createLeague(data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
       toast.success("League created successfully");
       setIsDialogOpen(false);
-      setFormData({ name: "", country: "" });
+      setFormData({ name: "", country: "", logo_url: "" });
     },
-    onError: () => {
-      toast.error("Failed to create league");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create league");
     },
   });
 
@@ -62,40 +62,35 @@ export default function Leagues() {
       data,
     }: {
       id: number;
-      data: { name: string; country: string };
+      data: { name: string; country: string; logo_url?: string };
     }) => {
-      const { error } = await supabase
-        .from("leagues")
-        .update(data)
-        .eq("league_id", id);
-      if (error) throw error;
+      const response = await leagueService.updateLeague(id, data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
       toast.success("League updated successfully");
       setIsDialogOpen(false);
       setEditingLeague(null);
-      setFormData({ name: "", country: "" });
+      setFormData({ name: "", country: "", logo_url: "" });
     },
-    onError: () => {
-      toast.error("Failed to update league");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update league");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .from("leagues")
-        .delete()
-        .eq("league_id", id);
-      if (error) throw error;
+      const response = await leagueService.deleteLeague(id);
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
       toast.success("League deleted successfully");
     },
-    onError: () => {
-      toast.error("Failed to delete league");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete league");
     },
   });
 
@@ -110,14 +105,18 @@ export default function Leagues() {
 
   const handleEdit = (league: any) => {
     setEditingLeague(league);
-    setFormData({ name: league.name, country: league.country });
+    setFormData({ 
+      name: league.name, 
+      country: league.country,
+      logo_url: league.logo_url || ""
+    });
     setIsDialogOpen(true);
   };
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingLeague(null);
-    setFormData({ name: "", country: "" });
+    setFormData({ name: "", country: "", logo_url: "" });
   };
 
   return (
@@ -165,6 +164,17 @@ export default function Leagues() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="logo_url">Logo URL</Label>
+                <Input
+                  id="logo_url"
+                  value={formData.logo_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, logo_url: e.target.value })
+                  }
+                  placeholder="https://..."
+                />
+              </div>
               {editingLeague && (
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug (auto-generated)</Label>
@@ -197,6 +207,7 @@ export default function Leagues() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Logo</TableHead>
               <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Country</TableHead>
@@ -206,19 +217,38 @@ export default function Leagues() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   Loading...
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-red-500">
+                  Error: {error.message}
                 </TableCell>
               </TableRow>
             ) : leagues?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No leagues found. Create your first league!
                 </TableCell>
               </TableRow>
             ) : (
-              leagues?.map((league) => (
+              leagues?.map((league: any) => (
                 <TableRow key={league.league_id}>
+                  <TableCell>
+                    {league.logo_url ? (
+                      <img
+                        src={league.logo_url}
+                        alt={league.name}
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs">
+                        {league.name.charAt(0)}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>{league.league_id}</TableCell>
                   <TableCell className="font-medium">{league.name}</TableCell>
                   <TableCell>{league.country}</TableCell>

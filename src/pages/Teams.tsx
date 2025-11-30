@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import * as teamService from "@/services/teamService";
 
 export default function Teams() {
   const queryClient = useQueryClient();
@@ -36,19 +36,17 @@ export default function Teams() {
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("teams")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
+      const response = await teamService.getAllTeams();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("teams").insert([data]);
-      if (error) throw error;
+      const response = await teamService.createTeam(data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
@@ -56,8 +54,8 @@ export default function Teams() {
       setIsDialogOpen(false);
       setFormData({ name: "", short_code: "", logo_url: "", country: "" });
     },
-    onError: () => {
-      toast.error("Failed to create team");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create team");
     },
   });
 
@@ -69,11 +67,9 @@ export default function Teams() {
       id: number;
       data: typeof formData;
     }) => {
-      const { error } = await supabase
-        .from("teams")
-        .update(data)
-        .eq("team_id", id);
-      if (error) throw error;
+      const response = await teamService.updateTeam(id, data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
@@ -82,22 +78,22 @@ export default function Teams() {
       setEditingTeam(null);
       setFormData({ name: "", short_code: "", logo_url: "", country: "" });
     },
-    onError: () => {
-      toast.error("Failed to update team");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update team");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase.from("teams").delete().eq("team_id", id);
-      if (error) throw error;
+      const response = await teamService.deleteTeam(id);
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team deleted successfully");
     },
-    onError: () => {
-      toast.error("Failed to delete team");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete team");
     },
   });
 

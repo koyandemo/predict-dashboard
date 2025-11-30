@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +29,9 @@ import { Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import * as matchService from "@/services/matchService";
+import * as leagueService from "@/services/leagueService";
+import * as teamService from "@/services/teamService";
 
 export default function Matches() {
   const queryClient = useQueryClient();
@@ -49,93 +51,73 @@ export default function Matches() {
   const { data: matches, isLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("matches")
-        .select(
-          `
-          *,
-          league:leagues(name),
-          home_team:teams!matches_home_team_id_fkey(name, short_code, logo_url),
-          away_team:teams!matches_away_team_id_fkey(name, short_code, logo_url)
-        `
-        )
-        .order("match_date", { ascending: false });
-      if (error) throw error;
-      return data;
+      const response = await matchService.getAllMatches();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
   const { data: leagues } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leagues")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
+      const response = await leagueService.getAllLeagues();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
   const { data: teams } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("teams")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
+      const response = await teamService.getAllTeams();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase.from("matches").insert([data]);
-      if (error) throw error;
+      const response = await matchService.createMatch(data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       toast.success("Match created successfully");
       handleDialogClose();
     },
-    onError: () => {
-      toast.error("Failed to create match");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create match");
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const { error } = await supabase
-        .from("matches")
-        .update(data)
-        .eq("match_id", id);
-      if (error) throw error;
+      const response = await matchService.updateMatch(id, data);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       toast.success("Match updated successfully");
       handleDialogClose();
     },
-    onError: () => {
-      toast.error("Failed to update match");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update match");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .from("matches")
-        .delete()
-        .eq("match_id", id);
-      if (error) throw error;
+      const response = await matchService.deleteMatch(id);
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       toast.success("Match deleted successfully");
     },
-    onError: () => {
-      toast.error("Failed to delete match");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete match");
     },
   });
 
@@ -413,12 +395,14 @@ export default function Matches() {
             ) : (
               matches?.map((match) => (
                 <TableRow key={match.match_id}>
-                  <TableCell>{match.league?.name}</TableCell>
-                  <TableCell className="font-medium">
-                    {match.home_team?.name}
+                  <TableCell>
+                    {leagues?.find(league => league.league_id === match.league_id)?.name || 'Unknown'}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {match.away_team?.name}
+                    {teams?.find(team => team.team_id === match.home_team_id)?.name || 'Unknown'}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {teams?.find(team => team.team_id === match.away_team_id)?.name || 'Unknown'}
                   </TableCell>
                   <TableCell>
                     {format(new Date(match.match_date), "MMM dd, yyyy")}

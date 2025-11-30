@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +7,15 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Users, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import * as matchService from "@/services/matchService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -16,6 +24,13 @@ export default function MatchDetail() {
   const [userName, setUserName] = useState("");
   const [commentText, setCommentText] = useState("");
   const [customScore, setCustomScore] = useState({ home: "", away: "" });
+  const [isVoteDialogOpen, setIsVoteDialogOpen] = useState(false);
+  const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
+  const [voteInput, setVoteInput] = useState("");
+  const [selectedOutcome, setSelectedOutcome] = useState<"home" | "draw" | "away" | null>(null);
+  const [isScoreVoteDialogOpen, setIsScoreVoteDialogOpen] = useState(false);
+  const [selectedScorePrediction, setSelectedScorePrediction] = useState<any>(null);
+  const [scoreVoteInput, setScoreVoteInput] = useState("");
 
   const matchIdNum = matchId ? parseInt(matchId) : 0;
 
@@ -23,29 +38,41 @@ export default function MatchDetail() {
   const { data: match, isLoading: matchLoading } = useQuery({
     queryKey: ["match", matchIdNum],
     queryFn: async () => {
-      const { data: matchData, error: matchError } = await supabase
-        .from("matches")
-        .select("*, leagues(name), home_team:teams!matches_home_team_id_fkey(name, logo_url, short_code), away_team:teams!matches_away_team_id_fkey(name, logo_url, short_code)")
-        .eq("match_id", matchIdNum)
-        .maybeSingle();
-      
-      if (matchError) throw matchError;
-      return matchData;
+      const response = await matchService.getMatchById(matchIdNum);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
-  // Fetch match outcomes
+  // Fetch match outcomes (percentages for backward compatibility)
   const { data: outcomes } = useQuery({
     queryKey: ["outcomes", matchIdNum],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("match_outcomes")
-        .select("*")
-        .eq("match_id", matchIdNum)
-        .single();
-      
-      if (error && error.code !== "PGRST116") throw error;
-      return data || { home_win_prob: 0, draw_prob: 0, away_win_prob: 0 };
+      const response = await matchService.getMatchOutcomes(matchIdNum);
+      if (!response.success) {
+        // Return default outcomes if not found or error
+        return { home_win_prob: 0, draw_prob: 0, away_win_prob: 0, match_id: matchIdNum };
+      }
+      return response.data;
+    },
+  });
+
+  // Fetch match vote counts (actual vote counts)
+  const { data: voteCounts } = useQuery({
+    queryKey: ["voteCounts", matchIdNum],
+    queryFn: async () => {
+      const response = await matchService.getMatchVoteCounts(matchIdNum);
+      if (!response.success) {
+        // Return default vote counts if not found or error
+        return { 
+          match_id: matchIdNum,
+          home_votes: 0,
+          draw_votes: 0,
+          away_votes: 0,
+          total_votes: 0
+        };
+      }
+      return response.data;
     },
   });
 
@@ -53,14 +80,9 @@ export default function MatchDetail() {
   const { data: scorePredictions } = useQuery({
     queryKey: ["scorePredictions", matchIdNum],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("score_predictions")
-        .select("*")
-        .eq("match_id", matchIdNum)
-        .order("vote_count", { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
+      const response = await matchService.getScorePredictions(matchIdNum);
+      if (!response.success) throw new Error(response.error);
+      return response.data || [];
     },
   });
 
@@ -68,84 +90,59 @@ export default function MatchDetail() {
   const { data: comments } = useQuery({
     queryKey: ["comments", matchIdNum],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("match_id", matchIdNum)
-        .order("timestamp", { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
+      const response = await matchService.getComments(matchIdNum);
+      if (!response.success) throw new Error(response.error);
+      return response.data || [];
     },
   });
 
-  // Vote mutation
+  // Vote mutation (for percentages - backward compatibility)
   const voteMutation = useMutation({
-    mutationFn: async (voteType: "home" | "draw" | "away") => {
-      const currentOutcome = outcomes || { home_win_prob: 33, draw_prob: 33, away_win_prob: 33 };
-      
-      // Increment the voted option
-      const updates = {
-        home_win_prob: currentOutcome.home_win_prob + (voteType === "home" ? 1 : 0),
-        draw_prob: currentOutcome.draw_prob + (voteType === "draw" ? 1 : 0),
-        away_win_prob: currentOutcome.away_win_prob + (voteType === "away" ? 1 : 0),
-      };
-
-      // Check if outcome exists
-      const { data: existing } = await supabase
-        .from("match_outcomes")
-        .select("outcome_id")
-        .eq("match_id", matchIdNum)
-        .single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("match_outcomes")
-          .update(updates)
-          .eq("match_id", matchIdNum);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("match_outcomes")
-          .insert({ match_id: matchIdNum, ...updates });
-        if (error) throw error;
-      }
+    mutationFn: async (votes: { home_win_prob: number; draw_prob: number; away_win_prob: number }) => {
+      const response = await matchService.updateMatchOutcomes(matchIdNum, votes);
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outcomes", matchIdNum] });
-      toast.success("Vote recorded!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update votes");
+    },
+  });
+
+  // Vote count mutation (for actual vote counts)
+  const voteCountMutation = useMutation({
+    mutationFn: async (voteData: { home_votes: number; draw_votes: number; away_votes: number }) => {
+      const response = await matchService.updateMatchVoteCounts(matchIdNum, voteData);
+      if (!response.success) throw new Error(response.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voteCounts", matchIdNum] });
+      toast.success("Votes updated successfully!");
+      setIsVoteDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update vote counts");
     },
   });
 
   // Score prediction mutation
   const scoreMutation = useMutation({
-    mutationFn: async ({ home, away }: { home: number; away: number }) => {
-      // Check if prediction exists
-      const { data: existing } = await supabase
-        .from("score_predictions")
-        .select("*")
-        .eq("match_id", matchIdNum)
-        .eq("home_score", home)
-        .eq("away_score", away)
-        .single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("score_predictions")
-          .update({ vote_count: existing.vote_count + 1 })
-          .eq("score_pred_id", existing.score_pred_id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("score_predictions")
-          .insert({ match_id: matchIdNum, home_score: home, away_score: away, vote_count: 1 });
-        if (error) throw error;
-      }
+    mutationFn: async ({ home_score, away_score }: { home_score: number; away_score: number }) => {
+      const response = await matchService.updateScorePrediction(matchIdNum, {
+        home_score,
+        away_score
+      });
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchIdNum] });
       setCustomScore({ home: "", away: "" });
       toast.success("Score prediction recorded!");
+      setIsScoreDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to record score prediction");
     },
   });
 
@@ -156,30 +153,180 @@ export default function MatchDetail() {
         throw new Error("Please fill in both name and comment");
       }
       
-      const { error } = await supabase
-        .from("comments")
-        .insert({
-          match_id: matchIdNum,
-          user_id: 1, // Placeholder
-          comment_text: `${userName}: ${commentText}`,
-        });
+      const response = await matchService.createComment(matchIdNum, {
+        user_id: 1, // Placeholder
+        comment_text: `${userName}: ${commentText}`,
+      });
       
-      if (error) throw error;
+      if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", matchIdNum] });
       setCommentText("");
       toast.success("Comment posted!");
     },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to post comment");
+    },
   });
+
+  // Score prediction vote count mutation
+  const scoreVoteMutation = useMutation({
+    mutationFn: async ({ score_pred_id, home_score, away_score, vote_count }: { score_pred_id?: number; home_score: number; away_score: number; vote_count: number }) => {
+      const response = await matchService.updateScorePrediction(matchIdNum, {
+        score_pred_id,
+        home_score,
+        away_score,
+        vote_count
+      });
+      if (!response.success) throw new Error(response.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchIdNum] });
+      toast.success("Score prediction votes updated!");
+      setIsScoreVoteDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update score prediction votes");
+    },
+  });
+
+  const handleVoteSubmit = () => {
+    if (!voteInput || !selectedOutcome) return;
+    
+    const voteCount = parseInt(voteInput);
+    if (isNaN(voteCount) || voteCount <= 0) {
+      toast.error("Please enter a valid vote count");
+      return;
+    }
+    
+    // Get current vote counts
+    const currentHomeVotes = voteCounts?.home_votes || 0;
+    const currentDrawVotes = voteCounts?.draw_votes || 0;
+    const currentAwayVotes = voteCounts?.away_votes || 0;
+    
+    // Update vote counts based on selection
+    let newHomeVotes = currentHomeVotes;
+    let newDrawVotes = currentDrawVotes;
+    let newAwayVotes = currentAwayVotes;
+    
+    if (selectedOutcome === "home") {
+      newHomeVotes += voteCount;
+    } else if (selectedOutcome === "draw") {
+      newDrawVotes += voteCount;
+    } else {
+      newAwayVotes += voteCount;
+    }
+    
+    // Calculate total votes
+    const newTotalVotes = newHomeVotes + newDrawVotes + newAwayVotes;
+    
+    // Calculate percentages for backward compatibility
+    let newHomePercent = newTotalVotes > 0 ? Math.round((newHomeVotes / newTotalVotes) * 100) : 0;
+    let newDrawPercent = newTotalVotes > 0 ? Math.round((newDrawVotes / newTotalVotes) * 100) : 0;
+    let newAwayPercent = newTotalVotes > 0 ? Math.round((newAwayVotes / newTotalVotes) * 100) : 0;
+    
+    // Ensure percentages sum to 100 (adjust for rounding)
+    let totalPercent = newHomePercent + newDrawPercent + newAwayPercent;
+    if (totalPercent !== 100 && newTotalVotes > 0) {
+      const diff = 100 - totalPercent;
+      if (selectedOutcome === "home") {
+        newHomePercent += diff;
+      } else if (selectedOutcome === "draw") {
+        newDrawPercent += diff;
+      } else {
+        newAwayPercent += diff;
+      }
+    }
+    
+    // Update both vote counts and percentages
+    voteCountMutation.mutate({
+      home_votes: newHomeVotes,
+      draw_votes: newDrawVotes,
+      away_votes: newAwayVotes
+    });
+    
+    // Also update percentages for backward compatibility
+    voteMutation.mutate({
+      home_win_prob: Math.max(0, Math.min(100, newHomePercent)),
+      draw_prob: Math.max(0, Math.min(100, newDrawPercent)),
+      away_win_prob: Math.max(0, Math.min(100, newAwayPercent))
+    });
+  };
+
+  const handleScoreSubmit = () => {
+    if (customScore.home && customScore.away) {
+      scoreMutation.mutate({
+        home_score: parseInt(customScore.home),
+        away_score: parseInt(customScore.away),
+      });
+    }
+  };
+
+  const openVoteDialog = (outcome: "home" | "draw" | "away") => {
+    setSelectedOutcome(outcome);
+    setVoteInput("");
+    setIsVoteDialogOpen(true);
+  };
+
+  const openScoreVoteDialog = (prediction: any) => {
+    setSelectedScorePrediction(prediction);
+    setScoreVoteInput("");
+    setIsScoreVoteDialogOpen(true);
+  };
+
+  const handleScoreVoteSubmit = () => {
+    if (!selectedScorePrediction) return;
+    
+    // Validate that all required fields are filled
+    if (!selectedScorePrediction.home_score && selectedScorePrediction.home_score !== 0) {
+      toast.error("Home score is required");
+      return;
+    }
+    
+    if (!selectedScorePrediction.away_score && selectedScorePrediction.away_score !== 0) {
+      toast.error("Away score is required");
+      return;
+    }
+    
+    if (!scoreVoteInput) {
+      toast.error("Vote count is required");
+      return;
+    }
+    
+    const inputVoteCount = parseInt(scoreVoteInput);
+    if (isNaN(inputVoteCount) || inputVoteCount <= 0) {
+      toast.error("Please enter a valid vote count");
+      return;
+    }
+    
+    // Add the new votes to existing vote count
+    const newVoteCount = selectedScorePrediction.vote_count + inputVoteCount;
+    
+    // Update the score prediction with new values and vote count
+    scoreVoteMutation.mutate({
+      score_pred_id: selectedScorePrediction.score_pred_id,
+      home_score: selectedScorePrediction.home_score,
+      away_score: selectedScorePrediction.away_score,
+      vote_count: newVoteCount
+    });
+    
+    setIsScoreVoteDialogOpen(false);
+  };
 
   if (matchLoading) return <div className="p-8">Loading...</div>;
   if (!match) return <div className="p-8">Match not found</div>;
 
-  const totalVotes = (outcomes?.home_win_prob || 0) + (outcomes?.draw_prob || 0) + (outcomes?.away_win_prob || 0);
-  const homePercent = totalVotes > 0 ? Math.round((outcomes?.home_win_prob || 0) / totalVotes * 100) : 33;
-  const drawPercent = totalVotes > 0 ? Math.round((outcomes?.draw_prob || 0) / totalVotes * 100) : 33;
-  const awayPercent = totalVotes > 0 ? Math.round((outcomes?.away_win_prob || 0) / totalVotes * 100) : 34;
+  // Use vote counts for display, fallback to percentages
+  const homeVotes = voteCounts?.home_votes || 0;
+  const drawVotes = voteCounts?.draw_votes || 0;
+  const awayVotes = voteCounts?.away_votes || 0;
+  const totalVotes = voteCounts?.total_votes || (homeVotes + drawVotes + awayVotes);
+  
+  // Calculate percentages from actual vote counts
+  const homePercent = totalVotes > 0 ? Math.round((homeVotes / totalVotes) * 100) : 0;
+  const drawPercent = totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 100) : 0;
+  const awayPercent = totalVotes > 0 ? Math.round((awayVotes / totalVotes) * 100) : 0;
 
   const totalScorePredictions = scorePredictions?.reduce((sum, pred) => sum + pred.vote_count, 0) || 0;
 
@@ -247,54 +394,93 @@ export default function MatchDetail() {
             <h2 className="text-xl font-semibold">Cast Your Vote</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="w-4 h-4" />
-              {totalVotes} votes
+              {totalVotes.toLocaleString()} total votes
             </div>
           </div>
 
-          <div className={`grid gap-4 ${match.allow_draw !== false ? "grid-cols-3" : "grid-cols-2"}`}>
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 p-6 hover:bg-green-500/10 hover:border-green-500"
-              onClick={() => voteMutation.mutate("home")}
+          {/* Voting cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <div 
+              className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => openVoteDialog("home")}
             >
-              <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center">
-                {match.home_team?.logo_url ? (
-                  <img src={match.home_team.logo_url} alt="" className="w-8 h-8 object-contain" />
-                ) : (
-                  <span className="text-sm font-bold">{match.home_team?.short_code}</span>
-                )}
-              </div>
-              <div className="text-xs font-medium">{match.home_team?.short_code}</div>
-              <div className="text-2xl font-bold text-green-500">{homePercent}%</div>
-            </Button>
-
+              <div className="font-bold text-green-500">{match.home_team?.short_code}</div>
+              <div className="text-2xl font-bold mt-2">{homePercent}%</div>
+              <div className="text-sm text-muted-foreground">{homeVotes.toLocaleString()} votes</div>
+              <div className="text-xs text-muted-foreground mt-1">Click to vote</div>
+            </div>
+            
             {match.allow_draw !== false && (
-              <Button
-                variant="outline"
-                className="h-auto flex-col gap-2 p-6 hover:bg-muted"
-                onClick={() => voteMutation.mutate("draw")}
+              <div 
+                className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
+                onClick={() => openVoteDialog("draw")}
               >
-                <div className="text-sm font-medium text-muted-foreground">Draw</div>
-                <div className="text-2xl font-bold">{drawPercent}%</div>
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 p-6 hover:bg-blue-500/10 hover:border-blue-500"
-              onClick={() => voteMutation.mutate("away")}
-            >
-              <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center">
-                {match.away_team?.logo_url ? (
-                  <img src={match.away_team.logo_url} alt="" className="w-8 h-8 object-contain" />
-                ) : (
-                  <span className="text-sm font-bold">{match.away_team?.short_code}</span>
-                )}
+                <div className="font-bold text-muted-foreground">Draw</div>
+                <div className="text-2xl font-bold mt-2">{drawPercent}%</div>
+                <div className="text-sm text-muted-foreground">{drawVotes.toLocaleString()} votes</div>
+                <div className="text-xs text-muted-foreground mt-1">Click to vote</div>
               </div>
-              <div className="text-xs font-medium">{match.away_team?.short_code}</div>
-              <div className="text-2xl font-bold text-blue-500">{awayPercent}%</div>
-            </Button>
+            )}
+            
+            <div 
+              className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => openVoteDialog("away")}
+            >
+              <div className="font-bold text-blue-500">{match.away_team?.short_code}</div>
+              <div className="text-2xl font-bold mt-2">{awayPercent}%</div>
+              <div className="text-sm text-muted-foreground">{awayVotes.toLocaleString()} votes</div>
+              <div className="text-xs text-muted-foreground mt-1">Click to vote</div>
+            </div>
           </div>
+
+          {/* Vote Dialog */}
+          <Dialog open={isVoteDialogOpen} onOpenChange={setIsVoteDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedOutcome === "home" && `Vote for ${match.home_team?.short_code}`}
+                  {selectedOutcome === "draw" && "Vote for Draw"}
+                  {selectedOutcome === "away" && `Vote for ${match.away_team?.short_code}`}
+                </DialogTitle>
+                <DialogDescription>
+                  Enter the number of votes you want to add
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">
+                    Current votes: {
+                      selectedOutcome === "home" ? homeVotes.toLocaleString() : 
+                      selectedOutcome === "draw" ? drawVotes.toLocaleString() : 
+                      awayVotes.toLocaleString()
+                    }
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter vote count (e.g., 5000)"
+                    value={voteInput}
+                    onChange={(e) => setVoteInput(e.target.value)}
+                    className="mt-2"
+                    min="1"
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Current distribution: Home {homeVotes.toLocaleString()} ({homePercent}%), Draw {drawVotes.toLocaleString()} ({drawPercent}%), Away {awayVotes.toLocaleString()} ({awayPercent}%)
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsVoteDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleVoteSubmit}
+                    disabled={!voteInput || isNaN(parseInt(voteInput)) || parseInt(voteInput) <= 0}
+                  >
+                    Add Votes
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Progress bar */}
           <div className="flex h-2 rounded-full overflow-hidden">
@@ -321,46 +507,150 @@ export default function MatchDetail() {
 
           <p className="text-sm text-muted-foreground">Select your predicted final score</p>
 
-          {/* Add custom score */}
-          <div className="flex gap-2 items-center">
-            <Input
-              type="number"
-              placeholder="Home"
-              value={customScore.home}
-              onChange={(e) => setCustomScore({ ...customScore, home: e.target.value })}
-              className="w-20"
-            />
-            <span className="font-bold">VS</span>
-            <Input
-              type="number"
-              placeholder="Away"
-              value={customScore.away}
-              onChange={(e) => setCustomScore({ ...customScore, away: e.target.value })}
-              className="w-20"
-            />
-            <Button
-              onClick={() => {
-                if (customScore.home && customScore.away) {
-                  scoreMutation.mutate({
-                    home: parseInt(customScore.home),
-                    away: parseInt(customScore.away),
-                  });
-                }
-              }}
-              disabled={!customScore.home || !customScore.away}
-            >
-              Submit
-            </Button>
-          </div>
+          {/* Dialog Trigger for Score Prediction */}
+          <Dialog open={isScoreDialogOpen} onOpenChange={setIsScoreDialogOpen}>
+            <DialogTrigger asChild>
+              <div 
+                className="cursor-pointer border rounded-lg p-4 hover:bg-accent transition-colors"
+                onClick={() => setIsScoreDialogOpen(true)}
+              >
+                <p className="text-center text-muted-foreground">Click to predict the score</p>
+              </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Predict the Score</DialogTitle>
+                <DialogDescription>
+                  Enter your predicted final score for this match
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <div className="font-medium">{match.home_team?.short_code}</div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={customScore.home}
+                      onChange={(e) => setCustomScore({ ...customScore, home: e.target.value })}
+                      className="w-20 text-center text-2xl"
+                      min="0"
+                    />
+                  </div>
+                  <div className="text-3xl font-bold">-</div>
+                  <div className="text-center">
+                    <div className="font-medium">{match.away_team?.short_code}</div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={customScore.away}
+                      onChange={(e) => setCustomScore({ ...customScore, away: e.target.value })}
+                      className="w-20 text-center text-2xl"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsScoreDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleScoreSubmit}
+                    disabled={!customScore.home || !customScore.away}
+                  >
+                    Submit Prediction
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Score Vote Dialog */}
+          <Dialog open={isScoreVoteDialogOpen} onOpenChange={setIsScoreVoteDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  Update Score Prediction
+                </DialogTitle>
+                <DialogDescription>
+                  Add votes to this score prediction
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <div className="font-medium">{match.home_team?.short_code}</div>
+                    <Input
+                      type="number"
+                      placeholder="Home score"
+                      value={selectedScorePrediction?.home_score ?? ""}
+                      onChange={(e) => setSelectedScorePrediction({...selectedScorePrediction, home_score: e.target.value === "" ? "" : parseInt(e.target.value)})}
+                      className="w-20 text-center text-2xl mt-2"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div className="text-3xl font-bold">-</div>
+                  <div className="text-center">
+                    <div className="font-medium">{match.away_team?.short_code}</div>
+                    <Input
+                      type="number"
+                      placeholder="Away score"
+                      value={selectedScorePrediction?.away_score ?? ""}
+                      onChange={(e) => setSelectedScorePrediction({...selectedScorePrediction, away_score: e.target.value === "" ? "" : parseInt(e.target.value)})}
+                      className="w-20 text-center text-2xl mt-2"
+                      min="0"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">
+                    Current Votes: {selectedScorePrediction?.vote_count?.toLocaleString() || 0}
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Add votes (e.g., 5000)"
+                    value={scoreVoteInput}
+                    onChange={(e) => setScoreVoteInput(e.target.value)}
+                    className="mt-2"
+                    min="1"
+                    required
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Note: Votes will be added to the current count
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsScoreVoteDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleScoreVoteSubmit}
+                    disabled={!selectedScorePrediction?.home_score && selectedScorePrediction?.home_score !== 0 || 
+                              !selectedScorePrediction?.away_score && selectedScorePrediction?.away_score !== 0 ||
+                              !scoreVoteInput || isNaN(parseInt(scoreVoteInput)) || parseInt(scoreVoteInput) <= 0}
+                  >
+                    Add Votes
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Score prediction list */}
           <div className="space-y-2">
+           
             {scorePredictions?.map((pred, idx) => {
               const percent = totalScorePredictions > 0 ? Math.round((pred.vote_count / totalScorePredictions) * 100) : 0;
               const predType = getPredictionType(pred.home_score, pred.away_score);
-              
+               {/* i want to add  user vote dialog when click this card show input dialog */}
               return (
-                <div key={pred.score_pred_id} className="flex items-center gap-4 p-3 rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                <div 
+                  key={pred.score_pred_id} 
+                  className="flex items-center gap-4 p-3 rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                  onClick={() => openScoreVoteDialog(pred)}
+                >
                   <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
                     {idx + 1}
                   </div>
