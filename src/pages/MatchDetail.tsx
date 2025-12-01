@@ -336,6 +336,9 @@ export default function MatchDetail() {
     return { label: "Draw", color: "text-blue-500" };
   };
 
+  // Determine if draw should be shown
+  const showDraw = match.allow_draw !== false;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -399,7 +402,7 @@ export default function MatchDetail() {
           </div>
 
           {/* Voting cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className={showDraw ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"}>
             <div 
               className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
               onClick={() => openVoteDialog("home")}
@@ -410,15 +413,15 @@ export default function MatchDetail() {
               <div className="text-xs text-muted-foreground mt-1">Click to vote</div>
             </div>
             
-            {match.allow_draw !== false && (
+            {showDraw && (
               <div 
-                className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
+                className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors bg-white"
                 onClick={() => openVoteDialog("draw")}
               >
-                <div className="font-bold text-muted-foreground">Draw</div>
-                <div className="text-2xl font-bold mt-2">{drawPercent}%</div>
-                <div className="text-sm text-muted-foreground">{drawVotes.toLocaleString()} votes</div>
-                <div className="text-xs text-muted-foreground mt-1">Click to vote</div>
+                <div className="font-bold text-black">Draw</div>
+                <div className="text-2xl font-bold mt-2 text-black">{drawPercent}%</div>
+                <div className="text-sm text-black/70">{drawVotes.toLocaleString()} votes</div>
+                <div className="text-xs text-black/70 mt-1">Click to vote</div>
               </div>
             )}
             
@@ -482,17 +485,21 @@ export default function MatchDetail() {
             </DialogContent>
           </Dialog>
 
-          {/* Progress bar */}
-          <div className="flex h-2 rounded-full overflow-hidden">
-            <div className="bg-green-500" style={{ width: `${homePercent}%` }} />
-            {match.allow_draw !== false && <div className="bg-muted" style={{ width: `${drawPercent}%` }} />}
-            <div className="bg-blue-500" style={{ width: `${awayPercent}%` }} />
-          </div>
-          <div className={`flex justify-between text-xs text-muted-foreground ${match.allow_draw !== false ? "" : "px-12"}`}>
-            <span>{match.home_team?.short_code}</span>
-            {match.allow_draw !== false && <span>Draw</span>}
-            <span>{match.away_team?.short_code}</span>
-          </div>
+          {/* Progress bar - hidden when draw is not allowed */}
+          {showDraw && (
+            <div className="space-y-2">
+              <div className="flex h-2 rounded-full overflow-hidden">
+                <div className="bg-green-500" style={{ width: `${homePercent}%` }} />
+                <div className="bg-white" style={{ width: `${drawPercent}%` }} />
+                <div className="bg-blue-500" style={{ width: `${awayPercent}%` }} />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{match.home_team?.short_code}</span>
+                <span>Draw</span>
+                <span>{match.away_team?.short_code}</span>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Score predictions */}
