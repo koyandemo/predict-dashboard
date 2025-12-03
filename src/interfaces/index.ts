@@ -42,6 +42,7 @@ export interface Match extends BaseEntity {
   home_score?: number;
   away_score?: number;
   allow_draw?: boolean;
+  match_timezone?: string;
 }
 
 // Match with details

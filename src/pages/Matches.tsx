@@ -48,6 +48,7 @@ export default function Matches() {
     allow_draw: true,
     home_score: "",
     away_score: "",
+    match_timezone: "UTC",
   });
 
   const { data: matches, isLoading } = useQuery({
@@ -134,6 +135,7 @@ export default function Matches() {
       venue: formData.venue,
       status: formData.status,
       allow_draw: formData.allow_draw,
+      match_timezone: formData.match_timezone,
       ...(formData.status === "finished" && {
         home_score: formData.home_score !== "" ? parseInt(formData.home_score) : null,
         away_score: formData.away_score !== "" ? parseInt(formData.away_score) : null,
@@ -160,6 +162,7 @@ export default function Matches() {
       allow_draw: match.allow_draw ?? true,
       home_score: match.home_score?.toString() || "",
       away_score: match.away_score?.toString() || "",
+      match_timezone: match.match_timezone || "UTC",
     });
     setIsDialogOpen(true);
   };
@@ -178,6 +181,7 @@ export default function Matches() {
       allow_draw: true,
       home_score: "",
       away_score: "",
+      match_timezone: "UTC",
     });
   };
 
@@ -321,6 +325,32 @@ export default function Matches() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="match_timezone">Timezone</Label>
+                <Select
+                  value={formData.match_timezone}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, match_timezone: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="America/New_York">America/New_York</SelectItem>
+                    <SelectItem value="America/Chicago">America/Chicago</SelectItem>
+                    <SelectItem value="America/Denver">America/Denver</SelectItem>
+                    <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
+                    <SelectItem value="Europe/London">Europe/London</SelectItem>
+                    <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
+                    <SelectItem value="Europe/Berlin">Europe/Berlin</SelectItem>
+                    <SelectItem value="Asia/Tokyo">Asia/Tokyo</SelectItem>
+                    <SelectItem value="Asia/Shanghai">Asia/Shanghai</SelectItem>
+                    <SelectItem value="Australia/Sydney">Australia/Sydney</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="venue">Venue</Label>
                 <Input
                   id="venue"
@@ -411,6 +441,7 @@ export default function Matches() {
               <TableHead>Away Team</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
+              <TableHead>Timezone</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -447,6 +478,7 @@ export default function Matches() {
                     {format(new Date(match.match_date), "MMM dd, yyyy")}
                   </TableCell>
                   <TableCell>{match.match_time}</TableCell>
+                  <TableCell>{match.match_timezone || 'UTC'}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded text-xs ${

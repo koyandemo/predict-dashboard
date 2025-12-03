@@ -33,6 +33,7 @@ export const createMatch = async (matchData: {
   venue?: string;
   status?: 'scheduled' | 'live' | 'finished' | 'postponed';
   allow_draw?: boolean;
+  match_timezone?: string;
 }): Promise<ApiResponse<MatchWithDetails>> => {
   return await baseService.create<MatchWithDetails>('matches', matchData);
 };
@@ -49,6 +50,7 @@ export const updateMatch = async (
     venue?: string;
     status?: 'scheduled' | 'live' | 'finished' | 'postponed';
     allow_draw?: boolean;
+    match_timezone?: string;
   }
 ): Promise<ApiResponse<MatchWithDetails>> => {
   return await baseService.update<MatchWithDetails>('matches', id, matchData);
