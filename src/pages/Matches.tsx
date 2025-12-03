@@ -44,8 +44,10 @@ export default function Matches() {
     match_date: "",
     match_time: "",
     venue: "",
-    status: "Upcoming",
+    status: "scheduled",
     allow_draw: true,
+    home_score: "",
+    away_score: "",
   });
 
   const { data: matches, isLoading } = useQuery({
@@ -132,6 +134,10 @@ export default function Matches() {
       venue: formData.venue,
       status: formData.status,
       allow_draw: formData.allow_draw,
+      ...(formData.status === "finished" && {
+        home_score: formData.home_score !== "" ? parseInt(formData.home_score) : null,
+        away_score: formData.away_score !== "" ? parseInt(formData.away_score) : null,
+      })
     };
 
     if (editingMatch) {
@@ -152,6 +158,8 @@ export default function Matches() {
       venue: match.venue || "",
       status: match.status,
       allow_draw: match.allow_draw ?? true,
+      home_score: match.home_score?.toString() || "",
+      away_score: match.away_score?.toString() || "",
     });
     setIsDialogOpen(true);
   };
@@ -166,8 +174,10 @@ export default function Matches() {
       match_date: "",
       match_time: "",
       venue: "",
-      status: "Upcoming",
+      status: "scheduled",
       allow_draw: true,
+      home_score: "",
+      away_score: "",
     });
   };
 
@@ -228,9 +238,10 @@ export default function Matches() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Upcoming">Upcoming</SelectItem>
-                      <SelectItem value="Live">Live</SelectItem>
-                      <SelectItem value="Finished">Finished</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="live">Live</SelectItem>
+                      <SelectItem value="finished">Finished</SelectItem>
+                      <SelectItem value="postponed">Postponed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -335,6 +346,34 @@ export default function Matches() {
                   }
                 />
               </div>
+              {formData.status === "finished" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="home_score">Home Score</Label>
+                    <Input
+                      id="home_score"
+                      type="number"
+                      min="0"
+                      value={formData.home_score}
+                      onChange={(e) =>
+                        setFormData({ ...formData, home_score: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="away_score">Away Score</Label>
+                    <Input
+                      id="away_score"
+                      type="number"
+                      min="0"
+                      value={formData.away_score}
+                      onChange={(e) =>
+                        setFormData({ ...formData, away_score: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
               {editingMatch && (
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug (auto-generated)</Label>
@@ -411,14 +450,16 @@ export default function Matches() {
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded text-xs ${
-                        match.status === "Upcoming"
+                        match.status === "scheduled"
                           ? "bg-info/20 text-info"
-                          : match.status === "Live"
+                          : match.status === "live"
                           ? "bg-success/20 text-success"
+                          : match.status === "finished"
+                          ? "bg-primary/20 text-primary"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {match.status}
+                      {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

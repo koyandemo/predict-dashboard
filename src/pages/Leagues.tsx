@@ -31,9 +31,7 @@ export default function Leagues() {
   const { data: leagues, isLoading, error } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      console.log("Fetching leagues from service...");
       const response = await leagueService.getAllLeagues();
-      console.log("Received response from service:", response);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
