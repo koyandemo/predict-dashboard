@@ -27,6 +27,7 @@ export interface Team extends BaseEntity {
   short_code: string;
   logo_url?: string;
   country: string;
+  team_type?: 'club' | 'country';
 }
 
 // Match entity
@@ -43,6 +44,10 @@ export interface Match extends BaseEntity {
   away_score?: number;
   allow_draw?: boolean;
   match_timezone?: string;
+  big_match?: boolean;
+  derby?: boolean;
+  match_type?: 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final';
+  published?: boolean;
 }
 
 // Match with details
@@ -88,6 +93,7 @@ export interface ScorePrediction extends BaseEntity {
   home_score: number;
   away_score: number;
   vote_count: number;
+  user_type?: 'user' | 'admin'; // New field to distinguish between user and admin votes
 }
 
 // User entity

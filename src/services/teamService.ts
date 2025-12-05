@@ -15,14 +15,14 @@ export const getTeamById = async (id: number): Promise<ApiResponse<Team>> => {
 };
 
 // Create a new team
-export const createTeam = async (teamData: { name: string; short_code: string; logo_url?: string; country: string }): Promise<ApiResponse<Team>> => {
+export const createTeam = async (teamData: { name: string; short_code: string; logo_url?: string; country: string; team_type?: 'club' | 'country' }): Promise<ApiResponse<Team>> => {
   return await baseService.create<Team>('teams', teamData);
 };
 
 // Update a team
 export const updateTeam = async (
   id: number,
-  teamData: { name: string; short_code: string; logo_url?: string; country: string }
+  teamData: { name: string; short_code: string; logo_url?: string; country: string; team_type?: 'club' | 'country' }
 ): Promise<ApiResponse<Team>> => {
   return await baseService.update<Team>('teams', id, teamData);
 };

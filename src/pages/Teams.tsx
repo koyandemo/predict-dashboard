@@ -31,6 +31,7 @@ export default function Teams() {
     short_code: "",
     logo_url: "",
     country: "",
+    team_type: "club" as 'club' | 'country',
   });
 
   const { data: teams, isLoading } = useQuery({
@@ -52,7 +53,7 @@ export default function Teams() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team created successfully");
       setIsDialogOpen(false);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "" });
+      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create team");
@@ -76,7 +77,7 @@ export default function Teams() {
       toast.success("Team updated successfully");
       setIsDialogOpen(false);
       setEditingTeam(null);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "" });
+      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update team");
@@ -113,6 +114,7 @@ export default function Teams() {
       short_code: team.short_code,
       logo_url: team.logo_url || "",
       country: team.country,
+      team_type: team.team_type || "club",
     });
     setIsDialogOpen(true);
   };
@@ -120,7 +122,7 @@ export default function Teams() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingTeam(null);
-    setFormData({ name: "", short_code: "", logo_url: "", country: "" });
+    setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
   };
 
   return (
@@ -192,6 +194,20 @@ export default function Teams() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="team_type">Team Type</Label>
+                <select
+                  id="team_type"
+                  value={formData.team_type}
+                  onChange={(e) =>
+                    setFormData({ ...formData, team_type: e.target.value as 'club' | 'country' })
+                  }
+                  className="w-full p-2 border border-input rounded-md bg-background"
+                >
+                  <option value="club">Club</option>
+                  <option value="country">National Team</option>
+                </select>
+              </div>
               {editingTeam && (
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug (auto-generated)</Label>
@@ -228,6 +244,7 @@ export default function Teams() {
               <TableHead>Name</TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Country</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -263,6 +280,11 @@ export default function Teams() {
                   <TableCell className="font-medium">{team.name}</TableCell>
                   <TableCell>{team.short_code}</TableCell>
                   <TableCell>{team.country}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {team.team_type === 'country' ? 'National' : 'Club'}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
                       <Button

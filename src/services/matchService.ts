@@ -34,6 +34,10 @@ export const createMatch = async (matchData: {
   status?: 'scheduled' | 'live' | 'finished' | 'postponed';
   allow_draw?: boolean;
   match_timezone?: string;
+  big_match?: boolean;
+  derby?: boolean;
+  match_type?: 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final';
+  published?: boolean;
 }): Promise<ApiResponse<MatchWithDetails>> => {
   return await baseService.create<MatchWithDetails>('matches', matchData);
 };
@@ -51,6 +55,10 @@ export const updateMatch = async (
     status?: 'scheduled' | 'live' | 'finished' | 'postponed';
     allow_draw?: boolean;
     match_timezone?: string;
+    big_match?: boolean;
+    derby?: boolean;
+    match_type?: 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final';
+    published?: boolean;
   }
 ): Promise<ApiResponse<MatchWithDetails>> => {
   return await baseService.update<MatchWithDetails>('matches', id, matchData);
@@ -129,10 +137,20 @@ export const updateScorePrediction = async (
   try {
     // If vote_count is provided, use the vote-count endpoint
     if (predictionData.vote_count !== undefined) {
-      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions/vote-count`, predictionData);
+      // Add user_type as 'admin' for admin panel operations
+      const requestData = {
+        ...predictionData,
+        user_type: 'admin' as 'admin' | 'user'
+      };
+      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions/vote-count`, requestData);
       return result;
     } else {
-      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions`, predictionData);
+      // Add user_type as 'admin' for admin panel operations
+      const requestData = {
+        ...predictionData,
+        user_type: 'admin' as 'admin' | 'user'
+      };
+      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions`, requestData);
       return result;
     }
   } catch (error) {

@@ -49,6 +49,10 @@ export default function Matches() {
     home_score: "",
     away_score: "",
     match_timezone: "UTC",
+    big_match: false,
+    derby: false,
+    match_type: "Normal" as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final',
+    published: false,
   });
 
   const { data: matches, isLoading } = useQuery({
@@ -136,6 +140,10 @@ export default function Matches() {
       status: formData.status,
       allow_draw: formData.allow_draw,
       match_timezone: formData.match_timezone,
+      big_match: formData.big_match,
+      derby: formData.derby,
+      match_type: formData.match_type,
+      published: formData.published,
       ...(formData.status === "finished" && {
         home_score: formData.home_score !== "" ? parseInt(formData.home_score) : null,
         away_score: formData.away_score !== "" ? parseInt(formData.away_score) : null,
@@ -151,18 +159,44 @@ export default function Matches() {
 
   const handleEdit = (match: any) => {
     setEditingMatch(match);
+    
+    // Extract date and time from match_date if it's a full datetime string
+    let matchDate = "";
+    let matchTime = "";
+    
+    if (match.match_date) {
+      // If match_date is a full datetime string, extract just the date part
+      if (match.match_date.includes('T')) {
+        const dateTimeParts = match.match_date.split('T');
+        matchDate = dateTimeParts[0]; // YYYY-MM-DD part
+        
+        // Extract time part if it exists
+        if (dateTimeParts[1]) {
+          const timePart = dateTimeParts[1].split('+')[0].split('-')[0].split('Z')[0];
+          matchTime = timePart.substring(0, 5); // HH:MM format
+        }
+      } else {
+        // If it's already just a date
+        matchDate = match.match_date;
+      }
+    }
+    
     setFormData({
       league_id: match.league_id.toString(),
       home_team_id: match.home_team_id.toString(),
       away_team_id: match.away_team_id.toString(),
-      match_date: match.match_date,
-      match_time: match.match_time,
+      match_date: matchDate,
+      match_time: matchTime || match.match_time || "",
       venue: match.venue || "",
       status: match.status,
       allow_draw: match.allow_draw ?? true,
       home_score: match.home_score?.toString() || "",
       away_score: match.away_score?.toString() || "",
       match_timezone: match.match_timezone || "UTC",
+      big_match: match.big_match ?? false,
+      derby: match.derby ?? false,
+      match_type: match.match_type || "Normal",
+      published: match.published ?? false,
     });
     setIsDialogOpen(true);
   };
@@ -182,6 +216,10 @@ export default function Matches() {
       home_score: "",
       away_score: "",
       match_timezone: "UTC",
+      big_match: false,
+      derby: false,
+      match_type: "Normal" as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final',
+      published: false,
     });
   };
 
@@ -324,6 +362,19 @@ export default function Matches() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="venue">Venue</Label>
+                <Input
+                  id="venue"
+                  value={formData.venue}
+                  onChange={(e) =>
+                    setFormData({ ...formData, venue: e.target.value })
+                  }
+                  placeholder="Enter venue"
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="match_timezone">Timezone</Label>
                 <Select
@@ -350,32 +401,89 @@ export default function Matches() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="venue">Venue</Label>
-                <Input
-                  id="venue"
-                  value={formData.venue}
-                  onChange={(e) =>
-                    setFormData({ ...formData, venue: e.target.value })
-                  }
-                  placeholder="e.g., Emirates Stadium"
-                />
-              </div>
-              <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-0.5">
-                  <Label htmlFor="allow_draw">Allow Draw</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Turn off for finals/knockout matches
-                  </p>
+
+              {/* New Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="big_match">Big Match</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="big_match"
+                      checked={formData.big_match}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, big_match: checked })
+                      }
+                    />
+                    <span>{formData.big_match ? "Yes" : "No"}</span>
+                  </div>
                 </div>
-                <Switch
-                  id="allow_draw"
-                  checked={formData.allow_draw}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, allow_draw: checked })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="derby">Derby (Rivalry)</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="derby"
+                      checked={formData.derby}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, derby: checked })
+                      }
+                    />
+                    <span>{formData.derby ? "Yes" : "No"}</span>
+                  </div>
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="match_type">Match Type</Label>
+                  <Select
+                    value={formData.match_type}
+                    onValueChange={(value) =>
+                      setFormData({ 
+                        ...formData, 
+                        match_type: value as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final' 
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Normal">Normal</SelectItem>
+                      <SelectItem value="Final">Final</SelectItem>
+                      <SelectItem value="Semi-Final">Semi-Final</SelectItem>
+                      <SelectItem value="Quarter-Final">Quarter-Final</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="published">Published</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="published"
+                      checked={formData.published}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, published: checked })
+                      }
+                    />
+                    <span>{formData.published ? "Yes" : "No"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="allow_draw">Allow Draw</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="allow_draw"
+                    checked={formData.allow_draw}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, allow_draw: checked })
+                    }
+                  />
+                  <span>{formData.allow_draw ? "Yes" : "No"}</span>
+                </div>
+              </div>
+
               {formData.status === "finished" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -443,20 +551,22 @@ export default function Matches() {
               <TableHead>Time</TableHead>
               <TableHead>Timezone</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Flags</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={9} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : matches?.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={9}
                   className="text-center text-muted-foreground"
                 >
                   No matches found. Create your first match!
@@ -493,6 +603,34 @@ export default function Matches() {
                     >
                       {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="px-2 py-1 rounded text-xs bg-secondary text-secondary-foreground">
+                      {match.match_type || 'Normal'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {match.big_match && (
+                        <span className="px-2 py-1 rounded text-xs bg-red-500 text-white">
+                          Big
+                        </span>
+                      )}
+                      {match.derby && (
+                        <span className="px-2 py-1 rounded text-xs bg-orange-500 text-white">
+                          Derby
+                        </span>
+                      )}
+                      {match.published ? (
+                        <span className="px-2 py-1 rounded text-xs bg-green-500 text-white">
+                          Published
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded text-xs bg-gray-500 text-white">
+                          Draft
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
