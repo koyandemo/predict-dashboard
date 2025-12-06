@@ -67,15 +67,6 @@ export interface MatchWithDetails extends Match {
   };
 }
 
-// Match Outcome entity
-export interface MatchOutcome extends BaseEntity {
-  outcome_id?: number;
-  match_id: number;
-  home_win_prob: number;
-  draw_prob: number;
-  away_win_prob: number;
-}
-
 // Match Vote Count entity
 export interface MatchVoteCount extends BaseEntity {
   vote_id?: number;
@@ -84,6 +75,9 @@ export interface MatchVoteCount extends BaseEntity {
   draw_votes: number;
   away_votes: number;
   total_votes: number;
+  home_percentage?: number;
+  draw_percentage?: number;
+  away_percentage?: number;
 }
 
 // Score Prediction entity

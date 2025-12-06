@@ -35,41 +35,39 @@ export default function MatchDetail() {
   const matchIdNum = matchId ? parseInt(matchId) : 0;
 
   // Fetch match details with teams and league
-  const { data: match, isLoading: matchLoading } = useQuery({
+  const { data: match, isLoading: matchLoading, error: matchError } = useQuery({
     queryKey: ["match", matchIdNum],
     queryFn: async () => {
-      const response = await matchService.getMatchById(matchIdNum);
-      if (!response.success) throw new Error(response.error);
-      return response.data;
-    },
-  });
-
-  // Fetch match outcomes (percentages for backward compatibility)
-  const { data: outcomes } = useQuery({
-    queryKey: ["outcomes", matchIdNum],
-    queryFn: async () => {
-      const response = await matchService.getMatchOutcomes(matchIdNum);
-      if (!response.success) {
-        // Return default outcomes if not found or error
-        return { home_win_prob: 0, draw_prob: 0, away_win_prob: 0, match_id: matchIdNum };
+      try {
+        const response = await matchService.getMatchById(matchIdNum);
+        if (!response.success) throw new Error(response.error);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching match:', error);
+        throw error;
       }
-      return response.data;
     },
   });
 
   // Fetch match vote counts (actual vote counts)
-  const { data: voteCounts } = useQuery({
+  const { data: voteCounts, isLoading: voteCountsLoading, error: voteCountsError } = useQuery({
     queryKey: ["voteCounts", matchIdNum],
     queryFn: async () => {
       const response = await matchService.getMatchVoteCounts(matchIdNum);
       if (!response.success) {
+        console.error('Vote counts fetch error:', response.error);
         // Return default vote counts if not found or error
         return { 
           match_id: matchIdNum,
           home_votes: 0,
           draw_votes: 0,
           away_votes: 0,
-          total_votes: 0
+          total_votes: 0,
+          home_percentage: 0,
+          draw_percentage: 0,
+          away_percentage: 0,
+          user_votes: { home: 0, draw: 0, away: 0, total: 0 },
+          admin_votes: { home: 0, draw: 0, away: 0, total: 0 }
         };
       }
       return response.data;
@@ -96,24 +94,10 @@ export default function MatchDetail() {
     },
   });
 
-  // Vote mutation (for percentages - backward compatibility)
-  const voteMutation = useMutation({
-    mutationFn: async (votes: { home_win_prob: number; draw_prob: number; away_win_prob: number }) => {
-      const response = await matchService.updateMatchOutcomes(matchIdNum, votes);
-      if (!response.success) throw new Error(response.error);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["outcomes", matchIdNum] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update votes");
-    },
-  });
-
-  // Vote count mutation (for actual vote counts)
+  // Admin vote count mutation (for admin vote counts)
   const voteCountMutation = useMutation({
     mutationFn: async (voteData: { home_votes: number; draw_votes: number; away_votes: number }) => {
-      const response = await matchService.updateMatchVoteCounts(matchIdNum, voteData);
+      const response = await matchService.updateAdminVoteCounts(matchIdNum, voteData);
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
@@ -200,15 +184,15 @@ export default function MatchDetail() {
       return;
     }
     
-    // Get current vote counts
-    const currentHomeVotes = voteCounts?.home_votes || 0;
-    const currentDrawVotes = voteCounts?.draw_votes || 0;
-    const currentAwayVotes = voteCounts?.away_votes || 0;
+    // Get current admin vote counts from the combined data with safe access
+    const currentAdminHomeVotes = voteCounts?.admin_votes?.home ?? 0;
+    const currentAdminDrawVotes = voteCounts?.admin_votes?.draw ?? 0;
+    const currentAdminAwayVotes = voteCounts?.admin_votes?.away ?? 0;
     
-    // Update vote counts based on selection
-    let newHomeVotes = currentHomeVotes;
-    let newDrawVotes = currentDrawVotes;
-    let newAwayVotes = currentAwayVotes;
+    // Update admin vote counts based on selection
+    let newHomeVotes = currentAdminHomeVotes;
+    let newDrawVotes = currentAdminDrawVotes;
+    let newAwayVotes = currentAdminAwayVotes;
     
     if (selectedOutcome === "home") {
       newHomeVotes += voteCount;
@@ -218,39 +202,11 @@ export default function MatchDetail() {
       newAwayVotes += voteCount;
     }
     
-    // Calculate total votes
-    const newTotalVotes = newHomeVotes + newDrawVotes + newAwayVotes;
-    
-    // Calculate percentages for backward compatibility
-    let newHomePercent = newTotalVotes > 0 ? Math.round((newHomeVotes / newTotalVotes) * 100) : 0;
-    let newDrawPercent = newTotalVotes > 0 ? Math.round((newDrawVotes / newTotalVotes) * 100) : 0;
-    let newAwayPercent = newTotalVotes > 0 ? Math.round((newAwayVotes / newTotalVotes) * 100) : 0;
-    
-    // Ensure percentages sum to 100 (adjust for rounding)
-    let totalPercent = newHomePercent + newDrawPercent + newAwayPercent;
-    if (totalPercent !== 100 && newTotalVotes > 0) {
-      const diff = 100 - totalPercent;
-      if (selectedOutcome === "home") {
-        newHomePercent += diff;
-      } else if (selectedOutcome === "draw") {
-        newDrawPercent += diff;
-      } else {
-        newAwayPercent += diff;
-      }
-    }
-    
-    // Update both vote counts and percentages
+    // Update admin vote counts only
     voteCountMutation.mutate({
       home_votes: newHomeVotes,
       draw_votes: newDrawVotes,
       away_votes: newAwayVotes
-    });
-    
-    // Also update percentages for backward compatibility
-    voteMutation.mutate({
-      home_win_prob: Math.max(0, Math.min(100, newHomePercent)),
-      draw_prob: Math.max(0, Math.min(100, newDrawPercent)),
-      away_win_prob: Math.max(0, Math.min(100, newAwayPercent))
     });
   };
 
@@ -314,19 +270,35 @@ export default function MatchDetail() {
     setIsScoreVoteDialogOpen(false);
   };
 
-  if (matchLoading) return <div className="p-8">Loading...</div>;
+  if (matchLoading || voteCountsLoading) return <div className="p-8">Loading...</div>;
+  
+  if (matchError) {
+    console.error('Match error:', matchError);
+    return <div className="p-8 text-red-500">Error loading match: {matchError instanceof Error ? matchError.message : 'Unknown error'}</div>;
+  }
+  
   if (!match) return <div className="p-8">Match not found</div>;
+  
+  if (voteCountsError) {
+    console.error('Vote counts error:', voteCountsError);
+  }
 
-  // Use vote counts for display, fallback to percentages
+  // Use vote counts for display with API-calculated percentages
   const homeVotes = voteCounts?.home_votes || 0;
   const drawVotes = voteCounts?.draw_votes || 0;
   const awayVotes = voteCounts?.away_votes || 0;
   const totalVotes = voteCounts?.total_votes || (homeVotes + drawVotes + awayVotes);
   
-  // Calculate percentages from actual vote counts
-  const homePercent = totalVotes > 0 ? Math.round((homeVotes / totalVotes) * 100) : 0;
-  const drawPercent = totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 100) : 0;
-  const awayPercent = totalVotes > 0 ? Math.round((awayVotes / totalVotes) * 100) : 0;
+  // Use API-calculated percentages if available, otherwise calculate from counts
+  const homePercent = voteCounts?.home_percentage !== undefined 
+    ? voteCounts.home_percentage 
+    : (totalVotes > 0 ? Math.round((homeVotes / totalVotes) * 100) : 0);
+  const drawPercent = voteCounts?.draw_percentage !== undefined 
+    ? voteCounts.draw_percentage 
+    : (totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 100) : 0);
+  const awayPercent = voteCounts?.away_percentage !== undefined 
+    ? voteCounts.away_percentage 
+    : (totalVotes > 0 ? Math.round((awayVotes / totalVotes) * 100) : 0);
 
   const totalScorePredictions = scorePredictions?.reduce((sum, pred) => sum + pred.vote_count, 0) || 0;
 
