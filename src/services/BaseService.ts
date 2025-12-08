@@ -93,7 +93,9 @@ export class BaseService {
     additionalHeaders: Record<string, string> = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${this.baseUrl}/${endpoint}`, {
+      const url = `${this.baseUrl}/${endpoint}`;
+      
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -101,18 +103,18 @@ export class BaseService {
         },
         body: JSON.stringify(data),
       });
-
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
       }
 
       const result: ApiResponse<T> = await response.json();
       return result;
     } catch (error) {
-      console.error(`Error creating ${endpoint}:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to create ${endpoint}`,
+        error: error instanceof Error ? error.message : "An unknown error occurred",
       };
     }
   }

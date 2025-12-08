@@ -232,7 +232,9 @@ export default function MatchDetail() {
   };
 
   const handleScoreVoteSubmit = () => {
-    if (!selectedScorePrediction) return;
+    if (!selectedScorePrediction) {
+      return;
+    }
     
     // Validate that all required fields are filled
     if (!selectedScorePrediction.home_score && selectedScorePrediction.home_score !== 0) {
@@ -256,8 +258,9 @@ export default function MatchDetail() {
       return;
     }
     
-    // Add the new votes to existing vote count
-    const newVoteCount = selectedScorePrediction.vote_count + inputVoteCount;
+    // Add the new votes to existing vote count (handle potential undefined values)
+    const existingVoteCount = selectedScorePrediction.vote_count || 0;
+    const newVoteCount = existingVoteCount + inputVoteCount;
     
     // Update the score prediction with new values and vote count
     scoreVoteMutation.mutate({

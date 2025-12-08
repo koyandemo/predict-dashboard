@@ -85,27 +85,22 @@ export const updateScorePrediction = async (
   }
 ): Promise<ApiResponse<ScorePrediction>> => {
   try {
-    // If vote_count is provided, use the admin-vote-count endpoint for admin operations
-    if (predictionData.vote_count !== undefined) {
-      const requestData = {
-        score_pred_id: predictionData.score_pred_id,
-        home_score: predictionData.home_score,
-        away_score: predictionData.away_score,
-        vote_count: predictionData.vote_count
-      };
-      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions/admin-vote-count`, requestData);
-      return result;
-    } else {
-      // Regular prediction creation (not from admin with vote count)
-      const requestData = {
-        home_score: predictionData.home_score,
-        away_score: predictionData.away_score
-      };
-      const result = await baseService.create<ScorePrediction>(`matches/${matchId}/predictions`, requestData);
-      return result;
-    }
+    // Always use the admin endpoint for the admin panel
+    // If vote_count is provided, use it; otherwise default to 0 for new predictions
+    const requestData = {
+      score_pred_id: predictionData.score_pred_id,
+      home_score: predictionData.home_score,
+      away_score: predictionData.away_score,
+      vote_count: predictionData.vote_count !== undefined ? predictionData.vote_count : 0
+    };
+    
+    // For admin endpoints, we don't need to send authentication headers
+    const result = await baseService.create<ScorePrediction>(
+      `matches/${matchId}/predictions/admin-vote-count`, 
+      requestData
+    );
+    return result;
   } catch (error) {
-    console.error("Error updating score prediction:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update score prediction",
@@ -174,10 +169,13 @@ export const updateAdminVoteCounts = async (
   }
 ): Promise<ApiResponse<any>> => {
   try {
-    const result = await baseService.create<any>(`matches/${matchId}/admin-vote-counts`, voteData);
+    // For admin endpoints, we don't need to send authentication headers
+    const result = await baseService.create<any>(
+      `matches/${matchId}/admin-vote-counts`, 
+      voteData
+    );
     return result;
   } catch (error) {
-    console.error("Error updating admin vote counts:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update admin vote counts",
