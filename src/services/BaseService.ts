@@ -21,6 +21,14 @@ export class BaseService {
   }
 
   /**
+   * Get auth headers with token from localStorage
+   */
+  protected getAuthHeaders(): Record<string, string> {
+    const token = localStorage.getItem("authToken");
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+  }
+
+  /**
    * Generic method to fetch all records from an endpoint
    */
   public async getAll<T>(
@@ -28,22 +36,24 @@ export class BaseService {
     additionalHeaders: Record<string, string> = {}
   ): Promise<ApiResponse<T[]>> {
     try {
+      console.log(this.getAuthHeaders())
       const response = await fetch(`${this.baseUrl}/${endpoint}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
       }
 
       const result: ApiResponse<T[]> = await response.json();
       return result;
     } catch (error) {
-      console.error(`Error fetching ${endpoint}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}`,
@@ -65,6 +75,7 @@ export class BaseService {
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
       });
@@ -99,6 +110,7 @@ export class BaseService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
         body: JSON.stringify(data),
@@ -133,6 +145,7 @@ export class BaseService {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
         body: JSON.stringify(data),
@@ -166,6 +179,7 @@ export class BaseService {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
       });
@@ -209,6 +223,7 @@ export class BaseService {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
           ...additionalHeaders
         },
       });

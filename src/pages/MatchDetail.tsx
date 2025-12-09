@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Users, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Users, MessageSquare, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import * as matchService from "@/services/matchService";
+import * as userService from "@/services/userService";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { generateAIComment } from "@/lib/aiHelper";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth(); // Get auth state from context
   const queryClient = useQueryClient();
   const [userName, setUserName] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -31,8 +36,32 @@ export default function MatchDetail() {
   const [isScoreVoteDialogOpen, setIsScoreVoteDialogOpen] = useState(false);
   const [selectedScorePrediction, setSelectedScorePrediction] = useState<any>(null);
   const [scoreVoteInput, setScoreVoteInput] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
 
   const matchIdNum = matchId ? parseInt(matchId) : 0;
+
+  // Fetch seed users
+  useEffect(() => {
+    const fetchSeedUsers = async () => {
+      // Only fetch if user is authenticated
+      if (!isAuthenticated) {
+        return;
+      }
+
+      
+      try {
+        //still 401 error
+        const response = await userService.getUsersByType('seed');
+        if (response.success && response.data) {
+          setUsers(response.data);
+        }
+      } catch (error) {
+        // Silent error handling
+      }
+    };
+
+    fetchSeedUsers();
+  }, [isAuthenticated, user]); // Add dependencies
 
   // Fetch match details with teams and league
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery({
@@ -137,8 +166,12 @@ export default function MatchDetail() {
         throw new Error("Please fill in both name and comment");
       }
       
+      // Find the selected user
+      const selectedUser = users.find((user: any) => user.name === userName);
+      const userId = selectedUser ? selectedUser.user_id : 1; // Fallback to 1 if not found
+      
       const response = await matchService.createComment(matchIdNum, {
-        user_id: 1, // Placeholder
+        user_id: userId,
         comment_text: `${userName}: ${commentText}`,
       });
       
@@ -313,6 +346,26 @@ export default function MatchDetail() {
 
   // Determine if draw should be shown
   const showDraw = match.allow_draw !== false;
+
+  // AI comment generation
+  const generateCommentWithAI = async () => {
+    if (!match) return;
+    
+    try {
+      const aiComment = await generateAIComment({
+        homeTeam: match.home_team?.name || '',
+        awayTeam: match.away_team?.name || '',
+        league: match.leagues?.name || '',
+        matchDate: new Date(match.match_date).toLocaleDateString()
+      });
+      
+      setCommentText(aiComment);
+      toast.success("AI comment generated!");
+    } catch (error) {
+      console.error('Error generating AI comment:', error);
+      toast.error("Failed to generate AI comment");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -665,11 +718,28 @@ export default function MatchDetail() {
           </div>
 
           <div className="space-y-3">
-            <Input
-              placeholder="Your name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Select onValueChange={(value) => setUserName(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user: any) => (
+                    <SelectItem key={user.user_id} value={user.name}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={generateCommentWithAI}
+                title="Generate AI comment"
+              >
+                <Sparkles className="w-4 h-4" />
+              </Button>
+            </div>
             <Textarea
               placeholder="Share your prediction or thoughts..."
               value={commentText}
