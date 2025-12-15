@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { generateAIComment } from "@/lib/aiHelper";
 import { useAuth } from "@/contexts/AuthContext";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -745,9 +746,15 @@ export default function MatchDetail() {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               rows={4}
+              maxLength={1000}
             />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{commentText.length}/500 characters</span>
+              <div className="flex items-center gap-2">
+                <EmojiPicker onEmojiSelect={(emoji) => setCommentText(prev => prev + emoji)} />
+                <span className={`text-xs transition-colors duration-200 ${commentText.length > 900 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {commentText.length}/1000 characters
+                </span>
+              </div>
               <Button
                 onClick={() => commentMutation.mutate()}
                 disabled={!userName.trim() || !commentText.trim()}
