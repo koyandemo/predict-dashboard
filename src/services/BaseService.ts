@@ -36,7 +36,6 @@ export class BaseService {
     additionalHeaders: Record<string, string> = {}
   ): Promise<ApiResponse<T[]>> {
     try {
-      console.log(this.getAuthHeaders())
       const response = await fetch(`${this.baseUrl}/${endpoint}`, {
         method: "GET",
         headers: {
