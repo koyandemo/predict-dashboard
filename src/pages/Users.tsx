@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import * as userService from "@/services/userService";
 import { User } from "@/interfaces";
-import { UserPlus, Edit, Trash2 } from "lucide-react";
+import { UserPlus, Edit, Trash2, Search } from "lucide-react";
 
 export default function Users() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [userTypeFilter, setUserTypeFilter] = useState<"all" | "user" | "admin" | "seed">("all");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,6 +36,33 @@ export default function Users() {
       return response.data;
     },
   });
+
+  // Filter and search users
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    
+    return users.filter(user => {
+      const matchesSearch = 
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = userTypeFilter === "all" || user.type === userTypeFilter;
+      
+      return matchesSearch && matchesType;
+    });
+  }, [users, searchTerm, userTypeFilter]);
+
+  // User statistics
+  const userStats = useMemo(() => {
+    if (!users) return { total: 0, admins: 0, regularUsers: 0, seedUsers: 0 };
+    
+    return {
+      total: users.length,
+      admins: users.filter(u => u.type === "admin").length,
+      regularUsers: users.filter(u => u.type === "user").length,
+      seedUsers: users.filter(u => u.type === "seed").length,
+    };
+  }, [users]);
 
   // Create user mutation
   const createUserMutation = useMutation({
@@ -244,6 +273,58 @@ export default function Users() {
           </Dialog>
         </div>
 
+        {/* User Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="p-4">
+            <div className="text-2xl font-bold">{userStats.total}</div>
+            <div className="text-muted-foreground">Total Users</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-2xl font-bold">{userStats.admins}</div>
+            <div className="text-muted-foreground">Admins</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-2xl font-bold">{userStats.regularUsers}</div>
+            <div className="text-muted-foreground">Regular Users</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-2xl font-bold">{userStats.seedUsers}</div>
+            <div className="text-muted-foreground">Seed Users</div>
+          </Card>
+        </div>
+
+        {/* Search and Filter */}
+        <Card className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <div className="w-full md:w-48">
+              <Select
+                value={userTypeFilter}
+                onValueChange={(value) => setUserTypeFilter(value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="seed">Seed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+
+        {/* Users Table */}
         <Card className="p-6">
           <Table>
             <TableHeader>
@@ -257,7 +338,7 @@ export default function Users() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users?.map((user) => (
+              {filteredUsers?.map((user) => (
                 <TableRow key={user.user_id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -297,6 +378,12 @@ export default function Users() {
               ))}
             </TableBody>
           </Table>
+          
+          {filteredUsers?.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No users found matching your criteria
+            </div>
+          )}
         </Card>
       </div>
     </div>

@@ -3,18 +3,19 @@ import * as leagueService from "@/services/leagueService";
 import * as matchService from "@/services/matchService";
 import * as userService from "@/services/userService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, BarChart3, User } from "lucide-react";
+import { Trophy, Users, Calendar, BarChart3, User, TrendingUp, Home, RotateCcw, Plane } from "lucide-react";
 
 export default function Analytics() {
   const { data: stats } = useQuery({
     queryKey: ["analytics"],
     queryFn: async () => {
-      const [leaguesCount, teamsCount, matchesCount, predictionsCount, users] = await Promise.all([
+      const [leaguesCount, teamsCount, matchesCount, predictionsCount, users, votingStats] = await Promise.all([
         leagueService.getLeaguesCount(),
         leagueService.getTeamsCount(),
         matchService.getMatchesCount(),
         userService.getPredictionsCount(),
         userService.getAllUsers(),
+        matchService.getVotingStatistics(),
       ]);
 
       return {
@@ -23,6 +24,7 @@ export default function Analytics() {
         matches: matchesCount,
         predictions: predictionsCount,
         users: users.success ? users.data?.length || 0 : 0,
+        voting: votingStats.success ? votingStats.data : null,
       };
     },
   });
@@ -60,6 +62,33 @@ export default function Analytics() {
     },
   ];
 
+  const votingStats = stats?.voting ? [
+    {
+      title: "Total Votes",
+      value: stats.voting.totalVotes || 0,
+      icon: TrendingUp,
+      color: "text-purple-500",
+    },
+    {
+      title: "Home Wins",
+      value: stats.voting.homeWins || 0,
+      icon: Home,
+      color: "text-blue-500",
+    },
+    {
+      title: "Draws",
+      value: stats.voting.draws || 0,
+      icon: RotateCcw,
+      color: "text-gray-500",
+    },
+    {
+      title: "Away Wins",
+      value: stats.voting.awayWins || 0,
+      icon: Plane,
+      color: "text-green-500",
+    },
+  ] : [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -84,6 +113,27 @@ export default function Analytics() {
           </Card>
         ))}
       </div>
+
+      {votingStats.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Voting Statistics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {votingStats.map((stat) => (
+              <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stat.value}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

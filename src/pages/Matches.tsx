@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -36,6 +36,7 @@ import * as teamService from "@/services/teamService";
 export default function Matches() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBulkImportDialogOpen, setIsBulkImportDialogOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<any>(null);
   const [formData, setFormData] = useState({
     league_id: "",
@@ -54,6 +55,9 @@ export default function Matches() {
     match_type: "Normal" as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final',
     published: false,
   });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ["matches"],
@@ -125,6 +129,28 @@ export default function Matches() {
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to delete match");
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const response = await matchService.bulkImportMatches(file);
+      if (!response.success) throw new Error(response.error || "Failed to import matches");
+      return response;
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      setIsImporting(false);
+      setIsBulkImportDialogOpen(false);
+      if (response.data) {
+        toast.success(`Bulk import completed. ${response.data.created} matches created, ${response.data.errors} errors.`);
+      } else {
+        toast.success("Bulk import completed successfully");
+      }
+    },
+    onError: (error: any) => {
+      setIsImporting(false);
+      toast.error(error.message || "Failed to import matches");
     },
   });
 
@@ -223,6 +249,21 @@ export default function Matches() {
     });
   };
 
+  const handleBulkImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setIsImporting(true);
+      bulkImportMutation.mutate(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -230,13 +271,28 @@ export default function Matches() {
           <h1 className="text-3xl font-bold">Matches</h1>
           <p className="text-muted-foreground">Manage football matches</p>
         </div>
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Match
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+          <Button className="gap-2" onClick={triggerFileInput} disabled={isImporting}>
+            <Upload className="h-4 w-4" />
+            {isImporting ? "Importing..." : "Bulk Import"}
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleBulkImport}
+            accept=".csv"
+            className="hidden"
+          />
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Match
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>

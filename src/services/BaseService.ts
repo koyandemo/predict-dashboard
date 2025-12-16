@@ -241,4 +241,40 @@ export class BaseService {
       };
     }
   }
+
+  /**
+   * Generic method to upload a file
+   */
+  public async uploadFile<T>(
+    endpoint: string,
+    file: File,
+    additionalHeaders: Record<string, string> = {}
+  ): Promise<ApiResponse<T>> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${this.baseUrl}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          ...this.getAuthHeaders(),
+          ...additionalHeaders
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
+      }
+
+      const result: ApiResponse<T> = await response.json();
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "An unknown error occurred",
+      };
+    }
+  }
 }

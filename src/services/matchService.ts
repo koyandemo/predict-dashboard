@@ -193,3 +193,12 @@ export const getMatchesCount = async (): Promise<number> => {
     return 0;
   }
 };
+
+// Get voting statistics
+export const getVotingStatistics = async (): Promise<ApiResponse<any>> => {
+  return await baseService.getAll<any>('matches/voting-statistics');
+};
+// Bulk import matches from CSV
+export const bulkImportMatches = async (file: File): Promise<ApiResponse<any>> => {
+  return await baseService.uploadFile<any>('matches/bulk-import', file);
+};
