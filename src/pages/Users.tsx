@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import * as userService from "@/services/userService";
 import { User } from "@/interfaces";
 import { UserPlus, Edit, Trash2, Search } from "lucide-react";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 export default function Users() {
   const queryClient = useQueryClient();
@@ -25,6 +26,7 @@ export default function Users() {
     provider: "email" as "email" | "google" | "facebook" | "twitter",
     password: "",
     type: "user" as "user" | "admin" | "seed",
+    avatar_bg_color: "#3b82f6",
   });
 
   // Fetch all users
@@ -112,6 +114,7 @@ export default function Users() {
       provider: "email",
       password: "",
       type: "user",
+      avatar_bg_color: "#3b82f6",
     });
     setEditingUser(null);
   };
@@ -128,6 +131,7 @@ export default function Users() {
           email: formData.email,
           provider: formData.provider,
           type: formData.type,
+          avatar_bg_color: formData.avatar_bg_color,
           ...(formData.password && { password: formData.password }),
         },
       });
@@ -139,6 +143,7 @@ export default function Users() {
         provider: formData.provider,
         password: formData.password || undefined,
         type: formData.type,
+        avatar_bg_color: formData.avatar_bg_color,
       });
     }
   };
@@ -151,6 +156,7 @@ export default function Users() {
       provider: user.provider,
       password: "",
       type: user.type,
+      avatar_bg_color: user.avatar_bg_color || "#3b82f6",
     });
     setIsDialogOpen(true);
   };
@@ -193,6 +199,26 @@ export default function Users() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="avatar_bg_color">Avatar Color</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="avatar_bg_color"
+                      type="color"
+                      value={formData.avatar_bg_color}
+                      onChange={(e) => setFormData({ ...formData, avatar_bg_color: e.target.value })}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      type="text"
+                      value={formData.avatar_bg_color}
+                      onChange={(e) => setFormData({ ...formData, avatar_bg_color: e.target.value })}
+                      placeholder="#3b82f6"
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -329,6 +355,7 @@ export default function Users() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Avatar</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Provider</TableHead>
@@ -340,6 +367,9 @@ export default function Users() {
             <TableBody>
               {filteredUsers?.map((user) => (
                 <TableRow key={user.user_id}>
+                  <TableCell>
+                    <UserAvatar user={user} size="sm" />
+                  </TableCell>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>

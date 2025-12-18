@@ -98,6 +98,8 @@ export interface User extends BaseEntity {
   provider: 'google' | 'facebook' | 'twitter' | 'email';
   password?: string;
   type: 'user' | 'admin' | 'seed';
+  avatar_url?: string;
+  avatar_bg_color?: string;
 }
 
 // Comment entity

@@ -14,6 +14,7 @@ import Analytics from "./pages/Analytics";
 import MatchDetail from "./pages/MatchDetail";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
+import UserAvatarDemo from "./pages/UserAvatarDemo";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -98,6 +99,16 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <MatchDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/user-avatar-demo" 
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <UserAvatarDemo />
+                  </DashboardLayout>
                 </ProtectedRoute>
               } 
             />

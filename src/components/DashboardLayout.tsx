@@ -24,6 +24,7 @@ const menuItems = [
   { title: "Matches", url: "/matches", icon: Calendar },
   { title: "Users", url: "/users", icon: Users },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Avatar Demo", url: "/user-avatar-demo", icon: Users },
 ];
 
 function AppSidebar() {

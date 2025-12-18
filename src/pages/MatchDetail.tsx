@@ -21,6 +21,7 @@ import {
 import { generateAIComment } from "@/lib/aiHelper";
 import { useAuth } from "@/contexts/AuthContext";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -48,21 +49,26 @@ export default function MatchDetail() {
       if (!isAuthenticated) {
         return;
       }
-
-      
+        
       try {
-        //still 401 error
         const response = await userService.getUsersByType('seed');
         if (response.success && response.data) {
           setUsers(response.data);
+        } else {
+          console.error('Failed to fetch seed users:', response.error);
         }
       } catch (error) {
-        // Silent error handling
+        console.error('Error fetching seed users:', error);
       }
     };
-
-    fetchSeedUsers();
-  }, [isAuthenticated, user]); // Add dependencies
+  
+    // Add a small delay to ensure authentication is properly initialized
+    const timer = setTimeout(() => {
+      fetchSeedUsers();
+    }, 100);
+  
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user]);
 
   // Fetch match details with teams and league
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery({
@@ -171,10 +177,14 @@ export default function MatchDetail() {
       const selectedUser = users.find((user: any) => user.name === userName);
       const userId = selectedUser ? selectedUser.user_id : 1; // Fallback to 1 if not found
       
+      console.log('Creating comment with userId:', userId, 'and matchId:', matchIdNum);
+      
       const response = await matchService.createComment(matchIdNum, {
         user_id: userId,
         comment_text: `${userName}: ${commentText}`,
       });
+      
+      console.log('Comment creation response:', response);
       
       if (!response.success) throw new Error(response.error);
     },
@@ -184,6 +194,7 @@ export default function MatchDetail() {
       toast.success("Comment posted!");
     },
     onError: (error: any) => {
+      console.error('Comment creation error:', error);
       toast.error(error.message || "Failed to post comment");
     },
   });
@@ -767,14 +778,34 @@ export default function MatchDetail() {
 
           {comments && comments.length > 0 ? (
             <div className="space-y-3 pt-4">
-              {comments.map((comment) => (
-                <div key={comment.comment_id} className="p-4 rounded-lg bg-card border">
-                  <p className="text-sm">{comment.comment_text}</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {new Date(comment.timestamp).toLocaleString()}
-                  </p>
-                </div>
-              ))}
+              {comments.map((comment) => {
+                // Extract user name from comment text (format: "UserName: comment text")
+                const commentParts = comment.comment_text.split(': ');
+                const userName = commentParts.length > 1 ? commentParts[0] : 'Unknown User';
+                const commentContent = commentParts.length > 1 ? commentParts.slice(1).join(': ') : comment.comment_text;
+                
+                // Create a mock user object for the avatar
+                const mockUser = {
+                  user_id: comment.user_id,
+                  name: userName,
+                  email: `${userName.toLowerCase().replace(/\s+/g, '.')}@example.com`
+                };
+                
+                return (
+                  <div key={comment.comment_id} className="p-4 rounded-lg bg-card border flex gap-3">
+                    <UserAvatar user={mockUser} size="sm" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{userName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1">{commentContent}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">

@@ -23,6 +23,7 @@ export const createUser = async (userData: {
   provider: 'google' | 'facebook' | 'twitter' | 'email';
   password?: string;
   type: 'user' | 'admin' | 'seed';
+  avatar_bg_color?: string;
 }): Promise<ApiResponse<User>> => {
   return await baseService.create<User>('users', userData);
 };
@@ -36,6 +37,7 @@ export const updateUser = async (
     provider?: 'google' | 'facebook' | 'twitter' | 'email';
     password?: string;
     type?: 'user' | 'admin' | 'seed';
+    avatar_bg_color?: string;
   }
 ): Promise<ApiResponse<User>> => {
   return await baseService.update<User>('users', id, userData);
