@@ -135,10 +135,15 @@ export default function MatchDetail() {
     mutationFn: async (voteData: { home_votes: number; draw_votes: number; away_votes: number }) => {
       const response = await matchService.updateAdminVoteCounts(matchIdNum, voteData);
       if (!response.success) throw new Error(response.error);
+      return response;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["voteCounts", matchIdNum] });
+    onSuccess: async () => {
+      // Refetch vote counts immediately
+      await queryClient.invalidateQueries({ queryKey: ["voteCounts", matchIdNum] });
+      await queryClient.refetchQueries({ queryKey: ["voteCounts", matchIdNum] });
       toast.success("Votes updated successfully!");
+      setVoteInput("");
+      setSelectedOutcome(null);
       setIsVoteDialogOpen(false);
     },
     onError: (error: any) => {
@@ -209,10 +214,15 @@ export default function MatchDetail() {
         vote_count
       });
       if (!response.success) throw new Error(response.error);
+      return response;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchIdNum] });
+    onSuccess: async () => {
+      // Refetch score predictions immediately
+      await queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchIdNum] });
+      await queryClient.refetchQueries({ queryKey: ["scorePredictions", matchIdNum] });
       toast.success("Score prediction votes updated!");
+      setScoreVoteInput("");
+      setSelectedScorePrediction(null);
       setIsScoreVoteDialogOpen(false);
     },
     onError: (error: any) => {
@@ -224,7 +234,7 @@ export default function MatchDetail() {
     if (!voteInput || !selectedOutcome) return;
     
     const voteCount = parseInt(voteInput);
-    if (isNaN(voteCount) || voteCount <= 0) {
+    if (isNaN(voteCount) || voteCount < 0) {
       toast.error("Please enter a valid vote count");
       return;
     }
@@ -234,17 +244,17 @@ export default function MatchDetail() {
     const currentAdminDrawVotes = voteCounts?.admin_votes?.draw ?? 0;
     const currentAdminAwayVotes = voteCounts?.admin_votes?.away ?? 0;
     
-    // Update admin vote counts based on selection
+    // SET admin vote counts based on selection (not add, but replace)
     let newHomeVotes = currentAdminHomeVotes;
     let newDrawVotes = currentAdminDrawVotes;
     let newAwayVotes = currentAdminAwayVotes;
     
     if (selectedOutcome === "home") {
-      newHomeVotes += voteCount;
+      newHomeVotes = voteCount;
     } else if (selectedOutcome === "draw") {
-      newDrawVotes += voteCount;
+      newDrawVotes = voteCount;
     } else {
-      newAwayVotes += voteCount;
+      newAwayVotes = voteCount;
     }
     
     // Update admin vote counts only
@@ -266,13 +276,19 @@ export default function MatchDetail() {
 
   const openVoteDialog = (outcome: "home" | "draw" | "away") => {
     setSelectedOutcome(outcome);
-    setVoteInput("");
+    // Pre-fill input with current admin votes for selected outcome
+    const currentVotes = outcome === "home" ? (voteCounts?.admin_votes?.home ?? 0) :
+                        outcome === "draw" ? (voteCounts?.admin_votes?.draw ?? 0) :
+                        (voteCounts?.admin_votes?.away ?? 0);
+    setVoteInput(currentVotes.toString());
     setIsVoteDialogOpen(true);
   };
 
   const openScoreVoteDialog = (prediction: any) => {
     setSelectedScorePrediction(prediction);
-    setScoreVoteInput("");
+    // Pre-fill input with current admin vote count for this score prediction
+    const currentAdminVotes = prediction.admin_votes || 0;
+    setScoreVoteInput(currentAdminVotes.toString());
     setIsScoreVoteDialogOpen(true);
   };
 
@@ -292,27 +308,24 @@ export default function MatchDetail() {
       return;
     }
     
-    if (!scoreVoteInput) {
+    if (!scoreVoteInput && scoreVoteInput !== "0") {
       toast.error("Vote count is required");
       return;
     }
     
     const inputVoteCount = parseInt(scoreVoteInput);
-    if (isNaN(inputVoteCount) || inputVoteCount <= 0) {
+    if (isNaN(inputVoteCount) || inputVoteCount < 0) {
       toast.error("Please enter a valid vote count");
       return;
     }
     
-    // Add the new votes to existing vote count (handle potential undefined values)
-    const existingVoteCount = selectedScorePrediction.vote_count || 0;
-    const newVoteCount = existingVoteCount + inputVoteCount;
-    
-    // Update the score prediction with new values and vote count
+    // SET the admin vote count (not add, replace)
+    // Update the score prediction with new admin vote count
     scoreVoteMutation.mutate({
       score_pred_id: selectedScorePrediction.score_pred_id,
       home_score: selectedScorePrediction.home_score,
       away_score: selectedScorePrediction.away_score,
-      vote_count: newVoteCount
+      vote_count: inputVoteCount
     });
     
     setIsScoreVoteDialogOpen(false);
@@ -486,17 +499,17 @@ export default function MatchDetail() {
                   {selectedOutcome === "away" && `Vote for ${match.away_team?.short_code}`}
                 </DialogTitle>
                 <DialogDescription>
-                  Enter the number of votes you want to add
+                  Enter the total number of votes (will replace current votes)
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium">
-                    Current votes: {
-                      selectedOutcome === "home" ? homeVotes.toLocaleString() : 
-                      selectedOutcome === "draw" ? drawVotes.toLocaleString() : 
-                      awayVotes.toLocaleString()
-                    }
+                    Current admin votes: {
+                      selectedOutcome === "home" ? (voteCounts?.admin_votes?.home ?? 0).toLocaleString() : 
+                      selectedOutcome === "draw" ? (voteCounts?.admin_votes?.draw ?? 0).toLocaleString() : 
+                      (voteCounts?.admin_votes?.away ?? 0).toLocaleString()
+    }
                   </label>
                   <Input
                     type="number"
@@ -504,7 +517,7 @@ export default function MatchDetail() {
                     value={voteInput}
                     onChange={(e) => setVoteInput(e.target.value)}
                     className="mt-2"
-                    min="1"
+                    min="0"
                   />
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -516,9 +529,9 @@ export default function MatchDetail() {
                   </Button>
                   <Button 
                     onClick={handleVoteSubmit}
-                    disabled={!voteInput || isNaN(parseInt(voteInput)) || parseInt(voteInput) <= 0}
+                    disabled={!voteInput || isNaN(parseInt(voteInput)) || parseInt(voteInput) < 0}
                   >
-                    Add Votes
+                    Update Votes
                   </Button>
                 </div>
               </div>
@@ -620,7 +633,7 @@ export default function MatchDetail() {
                   Update Score Prediction
                 </DialogTitle>
                 <DialogDescription>
-                  Add votes to this score prediction
+                  Set the admin vote count for this score prediction
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -653,20 +666,20 @@ export default function MatchDetail() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">
-                    Current Votes: {selectedScorePrediction?.vote_count?.toLocaleString() || 0}
+                    Current Admin Votes: {selectedScorePrediction?.admin_votes?.toLocaleString() || 0}
                   </label>
                   <Input
                     type="number"
-                    placeholder="Add votes (e.g., 5000)"
+                    placeholder="Enter admin vote count (e.g., 5000)"
                     value={scoreVoteInput}
                     onChange={(e) => setScoreVoteInput(e.target.value)}
                     className="mt-2"
-                    min="1"
+                    min="0"
                     required
                   />
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Note: Votes will be added to the current count
+                  Note: This will replace the current admin vote count
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsScoreVoteDialogOpen(false)}>
@@ -676,9 +689,9 @@ export default function MatchDetail() {
                     onClick={handleScoreVoteSubmit}
                     disabled={!selectedScorePrediction?.home_score && selectedScorePrediction?.home_score !== 0 || 
                               !selectedScorePrediction?.away_score && selectedScorePrediction?.away_score !== 0 ||
-                              !scoreVoteInput || isNaN(parseInt(scoreVoteInput)) || parseInt(scoreVoteInput) <= 0}
+                              !scoreVoteInput && scoreVoteInput !== "0" || isNaN(parseInt(scoreVoteInput)) || parseInt(scoreVoteInput) < 0}
                   >
-                    Add Votes
+                    Update Votes
                   </Button>
                 </div>
               </div>
