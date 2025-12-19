@@ -86,12 +86,12 @@ export const updateScorePrediction = async (
 ): Promise<ApiResponse<ScorePrediction>> => {
   try {
     // Always use the admin endpoint for the admin panel
-    // If vote_count is provided, use it; otherwise default to 0 for new predictions
+    // If vote_count is provided, use it; otherwise default to 1 for new predictions (so they show up)
     const requestData = {
       score_pred_id: predictionData.score_pred_id,
       home_score: predictionData.home_score,
       away_score: predictionData.away_score,
-      vote_count: predictionData.vote_count !== undefined ? predictionData.vote_count : 0
+      vote_count: predictionData.vote_count !== undefined ? predictionData.vote_count : 1
     };
     
     // For admin endpoints, we don't need to send authentication headers

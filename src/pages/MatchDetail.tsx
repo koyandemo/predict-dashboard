@@ -339,14 +339,14 @@ export default function MatchDetail() {
   
   // Use API-calculated percentages if available, otherwise calculate from counts
   const homePercent = voteCounts?.home_percentage !== undefined 
-    ? voteCounts.home_percentage 
-    : (totalVotes > 0 ? Math.round((homeVotes / totalVotes) * 100) : 0);
+    ? parseFloat(voteCounts.home_percentage.toFixed(2))
+    : (totalVotes > 0 ? Math.round((homeVotes / totalVotes) * 10000) / 100 : 0);
   const drawPercent = voteCounts?.draw_percentage !== undefined 
-    ? voteCounts.draw_percentage 
-    : (totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 100) : 0);
+    ? parseFloat(voteCounts.draw_percentage.toFixed(2))
+    : (totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 10000) / 100 : 0);
   const awayPercent = voteCounts?.away_percentage !== undefined 
-    ? voteCounts.away_percentage 
-    : (totalVotes > 0 ? Math.round((awayVotes / totalVotes) * 100) : 0);
+    ? parseFloat(voteCounts.away_percentage.toFixed(2))
+    : (totalVotes > 0 ? Math.round((awayVotes / totalVotes) * 10000) / 100 : 0);
 
   const totalScorePredictions = scorePredictions?.reduce((sum, pred) => sum + pred.vote_count, 0) || 0;
 
