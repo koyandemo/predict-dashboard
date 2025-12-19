@@ -28,6 +28,8 @@ export interface Team extends BaseEntity {
   logo_url?: string;
   country: string;
   team_type?: 'club' | 'country';
+  league_id?: number;
+  venue?: string;
 }
 
 // Match entity

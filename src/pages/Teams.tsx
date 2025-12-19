@@ -18,26 +18,46 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as teamService from "@/services/teamService";
+import * as leagueService from "@/services/leagueService";
 
 export default function Teams() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [filterLeagueId, setFilterLeagueId] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
     short_code: "",
     logo_url: "",
     country: "",
     team_type: "club" as 'club' | 'country',
+    league_id: undefined as number | undefined,
+    venue: "",
   });
 
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
       const response = await teamService.getAllTeams();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
+  });
+
+  const { data: leagues } = useQuery({
+    queryKey: ["leagues"],
+    queryFn: async () => {
+      const response = await leagueService.getAllLeagues();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -53,7 +73,7 @@ export default function Teams() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team created successfully");
       setIsDialogOpen(false);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
+      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create team");
@@ -77,7 +97,7 @@ export default function Teams() {
       toast.success("Team updated successfully");
       setIsDialogOpen(false);
       setEditingTeam(null);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
+      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update team");
@@ -115,6 +135,8 @@ export default function Teams() {
       logo_url: team.logo_url || "",
       country: team.country,
       team_type: team.team_type || "club",
+      league_id: team.league_id || undefined,
+      venue: team.venue || "",
     });
     setIsDialogOpen(true);
   };
@@ -122,8 +144,15 @@ export default function Teams() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingTeam(null);
-    setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club" });
+    setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
   };
+
+  // Filter teams by league
+  const filteredTeams = teams?.filter((team) => {
+    if (filterLeagueId === "all") return true;
+    if (filterLeagueId === "none") return !team.league_id;
+    return team.league_id === parseInt(filterLeagueId);
+  });
 
   return (
     <div className="space-y-6">
@@ -132,7 +161,21 @@ export default function Teams() {
           <h1 className="text-3xl font-bold">Teams</h1>
           <p className="text-muted-foreground">Manage football teams</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex gap-2">
+          <Select value={filterLeagueId} onValueChange={setFilterLeagueId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by league" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {leagues?.map((league) => (
+                <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                  {league.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -167,7 +210,7 @@ export default function Teams() {
                     setFormData({ ...formData, short_code: e.target.value })
                   }
                   placeholder="e.g., ARS"
-                  maxLength={10}
+                  maxLength={100}
                   required
                 />
               </div>
@@ -208,6 +251,38 @@ export default function Teams() {
                   <option value="country">National Team</option>
                 </select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="league_id">League (Optional)</Label>
+                <Select
+                  value={formData.league_id?.toString() || "none"}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, league_id: value === "none" ? undefined : parseInt(value) })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a league" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {leagues?.map((league) => (
+                      <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                        {league.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="venue">Venue (Optional)</Label>
+                <Input
+                  id="venue"
+                  value={formData.venue}
+                  onChange={(e) =>
+                    setFormData({ ...formData, venue: e.target.value })
+                  }
+                  placeholder="e.g., Emirates Stadium"
+                />
+              </div>
               {editingTeam && (
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug (auto-generated)</Label>
@@ -234,12 +309,14 @@ export default function Teams() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="bg-card rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>No.</TableHead>
               <TableHead>Logo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Code</TableHead>
@@ -251,19 +328,20 @@ export default function Teams() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : teams?.length === 0 ? (
+            ) : filteredTeams?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No teams found. Create your first team!
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  {filterLeagueId === "all" ? "No teams found. Create your first team!" : "No teams found for this filter."}
                 </TableCell>
               </TableRow>
             ) : (
-              teams?.map((team) => (
+              filteredTeams?.map((team, index) => (
                 <TableRow key={team.team_id}>
+                  <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     {team.logo_url ? (
                       <img

@@ -11,6 +11,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Table,
   TableBody,
   TableCell,
@@ -25,10 +38,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, ExternalLink, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Upload, Check, ChevronsUpDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import * as matchService from "@/services/matchService";
 import * as leagueService from "@/services/leagueService";
 import * as teamService from "@/services/teamService";
@@ -38,6 +52,11 @@ export default function Matches() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkImportDialogOpen, setIsBulkImportDialogOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<any>(null);
+  const [homeTeamOpen, setHomeTeamOpen] = useState(false);
+  const [awayTeamOpen, setAwayTeamOpen] = useState(false);
+  const [filterLeagueId, setFilterLeagueId] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPublished, setFilterPublished] = useState("all");
   const [formData, setFormData] = useState({
     league_id: "",
     home_team_id: "",
@@ -264,6 +283,17 @@ export default function Matches() {
     }
   };
 
+  // Filter matches
+  const filteredMatches = matches?.filter((match) => {
+    if (filterLeagueId !== "all" && match.league_id?.toString() !== filterLeagueId) return false;
+    if (filterStatus !== "all" && match.status !== filterStatus) return false;
+    if (filterPublished !== "all") {
+      if (filterPublished === "published" && !match.published) return false;
+      if (filterPublished === "unpublished" && match.published) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -292,7 +322,54 @@ export default function Matches() {
             className="hidden"
           />
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="w-[200px]">
+          <Select value={filterLeagueId} onValueChange={setFilterLeagueId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by league" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Leagues</SelectItem>
+              {leagues?.map((league) => (
+                <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                  {league.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[200px]">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="live">Live</SelectItem>
+              <SelectItem value="finished">Finished</SelectItem>
+              <SelectItem value="postponed">Postponed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[200px]">
+          <Select value={filterPublished} onValueChange={setFilterPublished}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by publish status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="unpublished">Unpublished</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
@@ -346,50 +423,100 @@ export default function Matches() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="home_team">Home Team</Label>
-                  <Select
-                    value={formData.home_team_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, home_team_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select home team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teams?.map((team) => (
-                        <SelectItem
-                          key={team.team_id}
-                          value={team.team_id.toString()}
-                        >
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Home Team</Label>
+                  <Popover open={homeTeamOpen} onOpenChange={setHomeTeamOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={homeTeamOpen}
+                        className="w-full justify-between"
+                      >
+                        {formData.home_team_id
+                          ? teams?.find((team) => team.team_id.toString() === formData.home_team_id)?.name
+                          : "Select home team..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search team..." />
+                        <CommandList>
+                          <CommandEmpty>No team found.</CommandEmpty>
+                          <CommandGroup>
+                            {teams?.map((team) => (
+                              <CommandItem
+                                key={team.team_id}
+                                value={team.name}
+                                onSelect={() => {
+                                  setFormData({ 
+                                    ...formData, 
+                                    home_team_id: team.team_id.toString(),
+                                    venue: team.venue || formData.venue
+                                  });
+                                  setHomeTeamOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.home_team_id === team.team_id.toString() ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {team.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="away_team">Away Team</Label>
-                  <Select
-                    value={formData.away_team_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, away_team_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select away team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teams?.map((team) => (
-                        <SelectItem
-                          key={team.team_id}
-                          value={team.team_id.toString()}
-                        >
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Away Team</Label>
+                  <Popover open={awayTeamOpen} onOpenChange={setAwayTeamOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={awayTeamOpen}
+                        className="w-full justify-between"
+                      >
+                        {formData.away_team_id
+                          ? teams?.find((team) => team.team_id.toString() === formData.away_team_id)?.name
+                          : "Select away team..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search team..." />
+                        <CommandList>
+                          <CommandEmpty>No team found.</CommandEmpty>
+                          <CommandGroup>
+                            {teams?.map((team) => (
+                              <CommandItem
+                                key={team.team_id}
+                                value={team.name}
+                                onSelect={() => {
+                                  setFormData({ ...formData, away_team_id: team.team_id.toString() });
+                                  setAwayTeamOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.away_team_id === team.team_id.toString() ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {team.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -594,7 +721,6 @@ export default function Matches() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <Table>
@@ -619,17 +745,17 @@ export default function Matches() {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : matches?.length === 0 ? (
+            ) : filteredMatches?.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={9}
                   className="text-center text-muted-foreground"
                 >
-                  No matches found. Create your first match!
+                  {matches?.length === 0 ? "No matches found. Create your first match!" : "No matches match the filter criteria."}
                 </TableCell>
               </TableRow>
             ) : (
-              matches?.map((match) => (
+              filteredMatches?.map((match) => (
                 <TableRow key={match.match_id}>
                   <TableCell>
                     {leagues?.find(league => league.league_id === match.league_id)?.name || 'Unknown'}
