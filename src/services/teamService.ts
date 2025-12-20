@@ -27,6 +27,22 @@ export const updateTeam = async (
   return await baseService.update<Team>('teams', id, teamData);
 };
 
+// Batch update teams
+export const batchUpdateTeams = async (
+  teamsData: Array<{ id: number; venue?: string }>
+): Promise<ApiResponse<Team[]>> => {
+  // For now, we'll update teams individually
+  // In a production environment, you might want to implement a proper batch update endpoint
+  const results = [];
+  for (const team of teamsData) {
+    const result = await baseService.update<Team>('teams', team.id, { venue: team.venue });
+    if (result.success) {
+      results.push(result.data);
+    }
+  }
+  return { success: true, data: results };
+};
+
 // Delete a team
 export const deleteTeam = async (id: number): Promise<ApiResponse<void>> => {
   return await baseService.delete('teams', id);

@@ -15,14 +15,14 @@ export const getLeagueById = async (id: number): Promise<ApiResponse<League>> =>
 };
 
 // Create a new league
-export const createLeague = async (leagueData: { name: string; country: string; logo_url?: string }): Promise<ApiResponse<League>> => {
+export const createLeague = async (leagueData: { name: string; country: string; logo_url?: string; sort_order?: number }): Promise<ApiResponse<League>> => {
   return await baseService.create<League>('leagues', leagueData);
 };
 
 // Update a league
 export const updateLeague = async (
   id: number,
-  leagueData: { name: string; country: string; logo_url?: string }
+  leagueData: { name: string; country: string; logo_url?: string; sort_order?: number }
 ): Promise<ApiResponse<League>> => {
   return await baseService.update<League>('leagues', id, leagueData);
 };
@@ -45,14 +45,14 @@ export const getTeamById = async (id: number): Promise<ApiResponse<Team>> => {
 };
 
 // Create a new team
-export const createTeam = async (teamData: { name: string; short_code: string; logo_url?: string; country: string }): Promise<ApiResponse<Team>> => {
+export const createTeam = async (teamData: { name: string; short_code: string; logo_url?: string; country: string; team_type?: 'club' | 'country'; league_id?: number; venue?: string }): Promise<ApiResponse<Team>> => {
   return await baseService.create<Team>('teams', teamData);
 };
 
 // Update a team
 export const updateTeam = async (
   id: number,
-  teamData: { name: string; short_code: string; logo_url?: string; country: string }
+  teamData: { name: string; short_code: string; logo_url?: string; country: string; team_type?: 'club' | 'country'; league_id?: number; venue?: string }
 ): Promise<ApiResponse<Team>> => {
   return await baseService.update<Team>('teams', id, teamData);
 };

@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import type { DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +9,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,} from "@/components/ui/table";
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as leagueService from "@/services/leagueService";
 
@@ -28,24 +27,7 @@ export default function Leagues() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLeague, setEditingLeague] = useState<any>(null);
   const [formData, setFormData] = useState({ name: "", country: "", logo_url: "", sort_order: 0 });
-  const [dragging, setDragging] = useState(false);
 
-  const onDragEnd = (result: DropResult) => {
-    setDragging(false);
-    
-    // Dropped outside the list
-    if (!result.destination) {
-      return;
-    }
-
-    // Reorder the leagues
-    const items = Array.from(leagues || []);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    // Update sort orders
-    updateSortOrderMutation.mutate(items);
-  };
   const { data: leagues, isLoading, error } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
@@ -114,66 +96,24 @@ export default function Leagues() {
   // Update league sort orders
   const updateSortOrderMutation = useMutation({
     mutationFn: async (updatedLeagues: any[]) => {
-      const promises = updatedLeagues.map(async (league, index) => {
-        try {
-          // Try to update with sort_order first
-          const result = await leagueService.updateLeague(league.league_id, { 
-            name: league.name, 
-            country: league.country, 
-            logo_url: league.logo_url, 
-            sort_order: index 
-          });
-          return result;
-        } catch (error: any) {
-          console.error(`Failed to update league ${league.league_id} with sort_order:`, error);
-          
-          // If it's a column error, try without sort_order
-          if (error.message && (error.message.includes('sort_order') || error.message.includes('column'))) {
-            console.log(`Retrying update for league ${league.league_id} without sort_order`);
-            try {
-              const result = await leagueService.updateLeague(league.league_id, { 
-                name: league.name, 
-                country: league.country, 
-                logo_url: league.logo_url
-              });
-              return result;
-            } catch (retryError) {
-              console.error(`Retry failed for league ${league.league_id}:`, retryError);
-              return { success: false, error: retryError.message };
-            }
-          }
-          
-          // Return a failed result structure
-          return { success: false, error: error.message };
-        }
-      });
-      
+      const promises = updatedLeagues.map((league, index) => 
+        leagueService.updateLeague(league.league_id, { ...league, sort_order: index })
+      );
       const results = await Promise.all(promises);
       
       // Check if all updates were successful
-      // Handle both successful responses and potential errors
-      const failedUpdates = results.filter(result => !result || (result.success === false) || !!result.error);
-      if (failedUpdates.length > 0) {
-        console.error("Some league updates failed:", failedUpdates);
-        // Even if some updates failed, we'll still show a partial success message
-        if (failedUpdates.length < results.length) {
-          return { partialSuccess: true, failedCount: failedUpdates.length };
-        }
-        throw new Error(`Failed to update ${failedUpdates.length} league(s)`);
+      const allSuccessful = results.every(result => result.success);
+      if (!allSuccessful) {
+        throw new Error("Failed to update some leagues");
       }
       
       return results;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
-      if (data && data.partialSuccess) {
-        toast.success(`League order updated with ${data.failedCount} failures`);
-      } else {
-        toast.success("League order updated successfully");
-      }
+      toast.success("League order updated successfully");
     },
     onError: (error: any) => {
-      console.error("Error updating league order:", error);
       toast.error(error.message || "Failed to update league order");
     },
   });
@@ -302,97 +242,77 @@ export default function Leagues() {
       </div>
 
       <div className="bg-card rounded-lg border border-border">
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Table>
-            <TableHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Logo</TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Country</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
               <TableRow>
-                <TableHead>Drag</TableHead>
-                <TableHead>Logo</TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableCell colSpan={5} className="text-center">
+                  Loading...
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <Droppable droppableId="leagues">
-              {(provided) => (
-                <TableBody ref={provided.innerRef} {...provided.droppableProps}>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : error ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-red-500">
-                        Error: {error.message}
-                      </TableCell>
-                    </TableRow>
-                  ) : leagues?.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No leagues found. Create your first league!
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    leagues?.map((league: any, index: number) => (
-                      <Draggable key={league.league_id} draggableId={league.league_id.toString()} index={index}>
-                        {(provided, snapshot) => (
-                          <TableRow
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={snapshot.isDragging ? "bg-accent" : ""}
-                          >
-                            <TableCell>
-                              <GripVertical className="h-4 w-4 cursor-move" />
-                            </TableCell>
-                            <TableCell>
-                              {league.logo_url ? (
-                                <img
-                                  src={league.logo_url}
-                                  alt={league.name}
-                                  className="w-10 h-10 object-contain rounded"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs">
-                                  {league.name.charAt(0)}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>{league.league_id}</TableCell>
-                            <TableCell className="font-medium">{league.name}</TableCell>
-                            <TableCell>{league.country}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => handleEdit(league)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => deleteMutation.mutate(league.league_id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                  {provided.placeholder}
-                </TableBody>
-              )}
-            </Droppable>
-          </Table>
-        </DragDropContext>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-red-500">
+                  Error: {error.message}
+                </TableCell>
+              </TableRow>
+            ) : leagues?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  No leagues found. Create your first league!
+                </TableCell>
+              </TableRow>
+            ) : (
+              leagues?.map((league: any) => (
+                <TableRow key={league.league_id}>
+                  <TableCell>
+                    {league.logo_url ? (
+                      <img
+                        src={league.logo_url}
+                        alt={league.name}
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs">
+                        {league.name.charAt(0)}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>{league.league_id}</TableCell>
+                  <TableCell className="font-medium">{league.name}</TableCell>
+                  <TableCell>{league.country}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(league)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(league.league_id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

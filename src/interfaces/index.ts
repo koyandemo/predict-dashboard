@@ -18,6 +18,7 @@ export interface League extends BaseEntity {
   country: string;
   slug: string;
   logo_url?: string;
+  sort_order?: number;
 }
 
 // Team entity
