@@ -54,11 +54,8 @@ export default function MatchDetail() {
         const response = await userService.getUsersByType('seed');
         if (response.success && response.data) {
           setUsers(response.data);
-        } else {
-          console.error('Failed to fetch seed users:', response.error);
         }
       } catch (error) {
-        console.error('Error fetching seed users:', error);
       }
     };
   
@@ -79,7 +76,6 @@ export default function MatchDetail() {
         if (!response.success) throw new Error(response.error);
         return response.data;
       } catch (error) {
-        console.error('Error fetching match:', error);
         throw error;
       }
     },
@@ -91,7 +87,6 @@ export default function MatchDetail() {
     queryFn: async () => {
       const response = await matchService.getMatchVoteCounts(matchIdNum);
       if (!response.success) {
-        console.error('Vote counts fetch error:', response.error);
         // Return default vote counts if not found or error
         return { 
           match_id: matchIdNum,
@@ -182,14 +177,10 @@ export default function MatchDetail() {
       const selectedUser = users.find((user: any) => user.name === userName);
       const userId = selectedUser ? selectedUser.user_id : 1; // Fallback to 1 if not found
       
-      console.log('Creating comment with userId:', userId, 'and matchId:', matchIdNum);
-      
       const response = await matchService.createComment(matchIdNum, {
         user_id: userId,
         comment_text: `${userName}: ${commentText}`,
       });
-      
-      console.log('Comment creation response:', response);
       
       if (!response.success) throw new Error(response.error);
     },
@@ -199,7 +190,6 @@ export default function MatchDetail() {
       toast.success("Comment posted!");
     },
     onError: (error: any) => {
-      console.error('Comment creation error:', error);
       toast.error(error.message || "Failed to post comment");
     },
   });
@@ -334,14 +324,12 @@ export default function MatchDetail() {
   if (matchLoading || voteCountsLoading) return <div className="p-8">Loading...</div>;
   
   if (matchError) {
-    console.error('Match error:', matchError);
     return <div className="p-8 text-red-500">Error loading match: {matchError instanceof Error ? matchError.message : 'Unknown error'}</div>;
   }
   
   if (!match) return <div className="p-8">Match not found</div>;
   
   if (voteCountsError) {
-    console.error('Vote counts error:', voteCountsError);
   }
 
   // Use vote counts for display with API-calculated percentages
@@ -386,8 +374,7 @@ export default function MatchDetail() {
       
       setCommentText(aiComment);
       toast.success("AI comment generated!");
-    } catch (error) {
-      console.error('Error generating AI comment:', error);
+    } catch (error: any) {
       toast.error("Failed to generate AI comment");
     }
   };

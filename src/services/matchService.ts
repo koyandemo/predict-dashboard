@@ -129,8 +129,7 @@ export const getMatchVoteCounts = async (matchId: number): Promise<ApiResponse<a
   try {
     const result = await baseService.getById<any>(`matches/${matchId}/vote-counts`, '');
     return result;
-  } catch (error) {
-    console.error("Error fetching match vote counts:", error);
+  } catch (error: any) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch match vote counts",
@@ -150,8 +149,7 @@ export const updateMatchVoteCounts = async (
   try {
     const result = await baseService.create<any>(`matches/${matchId}/vote-counts`, voteData);
     return result;
-  } catch (error) {
-    console.error("Error updating match vote counts:", error);
+  } catch (error: any) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update match vote counts",
@@ -188,8 +186,7 @@ export const getMatchesCount = async (): Promise<number> => {
   try {
     const result = await baseService.getAll<MatchWithDetails>('matches');
     return result.success && result.data ? result.data.length : 0;
-  } catch (error) {
-    console.error("Error fetching matches count:", error);
+  } catch (error: any) {
     return 0;
   }
 };

@@ -68,7 +68,6 @@ export const getLeaguesCount = async (): Promise<number> => {
     const result = await baseService.getAll<League>('leagues');
     return result.success && result.data ? result.data.length : 0;
   } catch (error) {
-    console.error("Error fetching leagues count:", error);
     return 0;
   }
 };
@@ -78,8 +77,7 @@ export const getTeamsCount = async (): Promise<number> => {
   try {
     const result = await baseService.getAll<Team>('teams');
     return result.success && result.data ? result.data.length : 0;
-  } catch (error) {
-    console.error("Error fetching teams count:", error);
+  } catch (error: any) {
     return 0;
   }
 };

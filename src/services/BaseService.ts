@@ -52,7 +52,7 @@ export class BaseService {
 
       const result: ApiResponse<T[]> = await response.json();
       return result;
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}`,
@@ -85,8 +85,7 @@ export class BaseService {
 
       const result: ApiResponse<T> = await response.json();
       return result;
-    } catch (error) {
-      console.error(`Error fetching ${endpoint}/${id}:`, error);
+    } catch (error: any) {
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}/${id}`,
@@ -156,8 +155,7 @@ export class BaseService {
 
       const result: ApiResponse<T> = await response.json();
       return result;
-    } catch (error) {
-      console.error(`Error updating ${endpoint}/${id}:`, error);
+    } catch (error: any) {
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to update ${endpoint}/${id}`,
@@ -189,8 +187,7 @@ export class BaseService {
 
       const result: ApiResponse<void> = await response.json();
       return result;
-    } catch (error) {
-      console.error(`Error deleting ${endpoint}/${id}:`, error);
+    } catch (error: any) {
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to delete ${endpoint}/${id}`,
@@ -233,8 +230,7 @@ export class BaseService {
 
       const result: ApiResponse<T[]> = await response.json();
       return result;
-    } catch (error) {
-      console.error(`Error fetching ${endpoint} with query:`, error);
+    } catch (error: any) {
       return {
         success: false,
         error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}`,

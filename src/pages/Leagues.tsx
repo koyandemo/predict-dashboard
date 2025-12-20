@@ -11,7 +11,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,} from "@/components/ui/table";
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,11 +24,38 @@ import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import * as leagueService from "@/services/leagueService";
 
+interface LeagueFormData {
+  name: string;
+  country: string;
+  logo_url: string;
+  sort_order: number;
+}
+
+interface League {
+  league_id: number;
+  name: string;
+  country: string;
+  logo_url: string;
+  sort_order?: number;
+  slug?: string;
+}
+
+interface UpdateSortOrderResult {
+  partialSuccess?: boolean;
+  failedCount?: number;
+  [key: string]: any;
+}
+
 export default function Leagues() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingLeague, setEditingLeague] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: "", country: "", logo_url: "", sort_order: 0 });
+  const [editingLeague, setEditingLeague] = useState<League | null>(null);
+  const [formData, setFormData] = useState<LeagueFormData>({ 
+    name: "", 
+    country: "", 
+    logo_url: "", 
+    sort_order: 0 
+  });
   const [dragging, setDragging] = useState(false);
 
   const onDragEnd = (result: DropResult) => {
@@ -46,18 +74,19 @@ export default function Leagues() {
     // Update sort orders
     updateSortOrderMutation.mutate(items);
   };
+  
   const { data: leagues, isLoading, error } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
       const response = await leagueService.getAllLeagues();
       if (!response.success) throw new Error(response.error);
       // Sort leagues by sort_order for display
-      return response.data?.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)) || [];
+      return response.data?.sort((a: League, b: League) => (a.sort_order || 0) - (b.sort_order || 0)) || [];
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; country: string; logo_url?: string }) => {
+    mutationFn: async (data: Omit<LeagueFormData, 'sort_order'>) => {
       const response = await leagueService.createLeague(data);
       if (!response.success) throw new Error(response.error);
       return response.data;
@@ -66,7 +95,7 @@ export default function Leagues() {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
       toast.success("League created successfully");
       setIsDialogOpen(false);
-      setFormData({ name: "", country: "", logo_url: "" });
+      setFormData({ name: "", country: "", logo_url: "", sort_order: 0 });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create league");
@@ -79,7 +108,7 @@ export default function Leagues() {
       data,
     }: {
       id: number;
-      data: { name: string; country: string; logo_url?: string };
+      data: Omit<LeagueFormData, 'sort_order'>;
     }) => {
       const response = await leagueService.updateLeague(id, data);
       if (!response.success) throw new Error(response.error);
@@ -90,7 +119,7 @@ export default function Leagues() {
       toast.success("League updated successfully");
       setIsDialogOpen(false);
       setEditingLeague(null);
-      setFormData({ name: "", country: "", logo_url: "" });
+      setFormData({ name: "", country: "", logo_url: "", sort_order: 0 });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update league");
@@ -113,7 +142,7 @@ export default function Leagues() {
 
   // Update league sort orders
   const updateSortOrderMutation = useMutation({
-    mutationFn: async (updatedLeagues: any[]) => {
+    mutationFn: async (updatedLeagues: League[]) => {
       const promises = updatedLeagues.map(async (league, index) => {
         try {
           // Try to update with sort_order first
@@ -125,11 +154,8 @@ export default function Leagues() {
           });
           return result;
         } catch (error: any) {
-          console.error(`Failed to update league ${league.league_id} with sort_order:`, error);
-          
           // If it's a column error, try without sort_order
           if (error.message && (error.message.includes('sort_order') || error.message.includes('column'))) {
-            console.log(`Retrying update for league ${league.league_id} without sort_order`);
             try {
               const result = await leagueService.updateLeague(league.league_id, { 
                 name: league.name, 
@@ -137,8 +163,7 @@ export default function Leagues() {
                 logo_url: league.logo_url
               });
               return result;
-            } catch (retryError) {
-              console.error(`Retry failed for league ${league.league_id}:`, retryError);
+            } catch (retryError: any) {
               return { success: false, error: retryError.message };
             }
           }
@@ -154,7 +179,6 @@ export default function Leagues() {
       // Handle both successful responses and potential errors
       const failedUpdates = results.filter(result => !result || (result.success === false) || !!result.error);
       if (failedUpdates.length > 0) {
-        console.error("Some league updates failed:", failedUpdates);
         // Even if some updates failed, we'll still show a partial success message
         if (failedUpdates.length < results.length) {
           return { partialSuccess: true, failedCount: failedUpdates.length };
@@ -164,16 +188,15 @@ export default function Leagues() {
       
       return results;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: UpdateSortOrderResult | any[]) => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
-      if (data && data.partialSuccess) {
-        toast.success(`League order updated with ${data.failedCount} failures`);
+      if (data && typeof data === 'object' && 'partialSuccess' in data) {
+        toast.success(`League order updated with ${(data as UpdateSortOrderResult).failedCount} failures`);
       } else {
         toast.success("League order updated successfully");
       }
     },
     onError: (error: any) => {
-      console.error("Error updating league order:", error);
       toast.error(error.message || "Failed to update league order");
     },
   });
@@ -181,13 +204,24 @@ export default function Leagues() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingLeague) {
-      updateMutation.mutate({ id: editingLeague.league_id, data: formData });
+      updateMutation.mutate({ 
+        id: editingLeague.league_id, 
+        data: { 
+          name: formData.name, 
+          country: formData.country, 
+          logo_url: formData.logo_url 
+        } 
+      });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate({ 
+        name: formData.name, 
+        country: formData.country, 
+        logo_url: formData.logo_url 
+      });
     }
   };
 
-  const handleEdit = (league: any) => {
+  const handleEdit = (league: League) => {
     setEditingLeague(league);
     setFormData({ 
       name: league.name, 
@@ -336,7 +370,7 @@ export default function Leagues() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    leagues?.map((league: any, index: number) => (
+                    leagues?.map((league: League, index: number) => (
                       <Draggable key={league.league_id} draggableId={league.league_id.toString()} index={index}>
                         {(provided, snapshot) => (
                           <TableRow
