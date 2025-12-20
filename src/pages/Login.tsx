@@ -35,12 +35,20 @@ export default function Login() {
       const result = await baseService.create<any>('users/login', { email, password });
 
       if (result.success) {
-        // Use the auth context login function
-        login(result.data.token, result.data.user);
-        toast.success("Login successful!");
-        navigate(from, { replace: true });
+        // The login endpoint returns token and user at root level, not in data
+        const token = (result as any).token || result.data?.token;
+        const user = (result as any).user || result.data?.user;
+        
+        if (token && user) {
+          // Use the auth context login function
+          login(token, user);
+          toast.success("Login successful!");
+          navigate(from, { replace: true });
+        } else {
+          toast.error("Invalid response from server");
+        }
       } else {
-        toast.error(result.message || "Login failed");
+        toast.error(result.message || result.error || "Login failed");
       }
     } catch (error) {
       toast.error("An error occurred during login");
