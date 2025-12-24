@@ -79,9 +79,20 @@ export default function Matches() {
   const [isImporting, setIsImporting] = useState(false);
 
   const { data: matches, isLoading } = useQuery({
-    queryKey: ["matches"],
+    queryKey: ["matches", filterLeagueId, filterStatus, filterPublished],
     queryFn: async () => {
-      const response = await matchService.getAllMatches();
+      const filters: any = {};
+      if (filterLeagueId !== "all") {
+        filters.league_id = parseInt(filterLeagueId);
+      }
+      if (filterStatus !== "all") {
+        filters.status = filterStatus;
+      }
+      if (filterPublished !== "all") {
+        filters.published = filterPublished === "published";
+      }
+      
+      const response = await matchService.getAllMatches(Object.keys(filters).length > 0 ? filters : undefined);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -283,16 +294,8 @@ export default function Matches() {
     }
   };
 
-  // Filter matches
-  const filteredMatches = matches?.filter((match) => {
-    if (filterLeagueId !== "all" && match.league_id?.toString() !== filterLeagueId) return false;
-    if (filterStatus !== "all" && match.status !== filterStatus) return false;
-    if (filterPublished !== "all") {
-      if (filterPublished === "published" && !match.published) return false;
-      if (filterPublished === "unpublished" && match.published) return false;
-    }
-    return true;
-  });
+  // Matches are already filtered by the API
+  const filteredMatches = matches;
 
   return (
     <div className="space-y-6">

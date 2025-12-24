@@ -9,11 +9,13 @@ export const getAllMatches = async (filters?: {
   league_id?: number;
   date?: string;
   status?: string;
+  published?: boolean;
 }): Promise<ApiResponse<MatchWithDetails[]>> => {
   const queryParams: Record<string, string | number> = {};
   if (filters?.league_id) queryParams.league_id = filters.league_id;
   if (filters?.date) queryParams.date = filters.date;
   if (filters?.status) queryParams.status = filters.status;
+  if (filters?.published !== undefined) queryParams.published = filters.published;
   
   return await baseService.getByQuery<MatchWithDetails>('matches', queryParams);
 };
