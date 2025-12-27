@@ -17,7 +17,10 @@ export class BaseService {
   protected baseUrl: string;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
+    this.baseUrl =
+      baseUrl ||
+      import.meta.env.VITE_API_BASE_URL ||
+      "https://football-predict-api-m89a.onrender.com/api";
   }
 
   /**
@@ -25,7 +28,7 @@ export class BaseService {
    */
   protected getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem("authToken");
-    return token ? { "Authorization": `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   /**
@@ -41,13 +44,15 @@ export class BaseService {
         headers: {
           "Content-Type": "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, text: ${errorText}`
+        );
       }
 
       const result: ApiResponse<T[]> = await response.json();
@@ -55,7 +60,10 @@ export class BaseService {
     } catch (error: any) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}`,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to fetch ${endpoint}`,
       };
     }
   }
@@ -73,9 +81,9 @@ export class BaseService {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
       });
 
@@ -88,7 +96,10 @@ export class BaseService {
     } catch (error: any) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}/${id}`,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to fetch ${endpoint}/${id}`,
       };
     }
   }
@@ -103,20 +114,22 @@ export class BaseService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseUrl}/${endpoint}`;
-      
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, text: ${errorText}`
+        );
       }
 
       const result: ApiResponse<T> = await response.json();
@@ -124,7 +137,8 @@ export class BaseService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred",
       };
     }
   }
@@ -144,7 +158,7 @@ export class BaseService {
         headers: {
           "Content-Type": "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
         body: JSON.stringify(data),
       });
@@ -158,7 +172,10 @@ export class BaseService {
     } catch (error: any) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to update ${endpoint}/${id}`,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to update ${endpoint}/${id}`,
       };
     }
   }
@@ -177,7 +194,7 @@ export class BaseService {
         headers: {
           "Content-Type": "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
       });
 
@@ -190,7 +207,10 @@ export class BaseService {
     } catch (error: any) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to delete ${endpoint}/${id}`,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to delete ${endpoint}/${id}`,
       };
     }
   }
@@ -205,7 +225,7 @@ export class BaseService {
   ): Promise<ApiResponse<T[]>> {
     try {
       let url = `${this.baseUrl}/${endpoint}`;
-      
+
       // Add query parameters if provided
       if (Object.keys(queryParams).length > 0) {
         const searchParams = new URLSearchParams();
@@ -220,7 +240,7 @@ export class BaseService {
         headers: {
           "Content-Type": "application/json",
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
       });
 
@@ -233,7 +253,10 @@ export class BaseService {
     } catch (error: any) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : `Failed to fetch ${endpoint}`,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to fetch ${endpoint}`,
       };
     }
   }
@@ -248,20 +271,22 @@ export class BaseService {
   ): Promise<ApiResponse<T>> {
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      
+      formData.append("file", file);
+
       const response = await fetch(`${this.baseUrl}/${endpoint}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.getAuthHeaders(),
-          ...additionalHeaders
+          ...additionalHeaders,
         },
-        body: formData
+        body: formData,
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, text: ${errorText}`
+        );
       }
 
       const result: ApiResponse<T> = await response.json();
@@ -269,7 +294,8 @@ export class BaseService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred",
       };
     }
   }
