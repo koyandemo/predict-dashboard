@@ -14,9 +14,10 @@ import Analytics from "./pages/Analytics";
 import MatchDetail from "./pages/MatchDetail";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
-import UserAvatarDemo from "./pages/UserAvatarDemo";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
+import UserAvatarDemo from './pages/UserAvatarDemo';
+import Login from './pages/Login';
+import NotFound from './pages/NotFound';
+import Contacts from './pages/Contacts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -91,6 +92,16 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Users />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contacts"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Contacts />
                   </DashboardLayout>
                 </ProtectedRoute>
               }

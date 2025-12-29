@@ -113,3 +113,11 @@ export interface Comment extends BaseEntity {
   comment_text: string;
   timestamp: string;
 }
+
+// Contact entity
+export interface Contact extends BaseEntity {
+  contact_id?: number;
+  title: string;
+  message: string;
+  email: string;
+}
