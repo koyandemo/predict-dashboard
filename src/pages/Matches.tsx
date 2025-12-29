@@ -38,7 +38,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, ExternalLink, Upload, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Upload,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -68,15 +76,35 @@ export default function Matches() {
     allow_draw: true,
     home_score: "",
     away_score: "",
-    match_timezone: "UTC",
+    match_timezone: "Asia/Bangkok",
     big_match: false,
     derby: false,
-    match_type: "Normal" as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final',
+    match_type: "Normal" as "Normal" | "Final" | "Semi-Final" | "Quarter-Final",
     published: false,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  // Helper function to format time for input field
+  const formatTimeForInput = (timeStr: string): string => {
+    if (!timeStr) return "";
+
+    // If timeStr is in HH:MM:SS format, extract HH:MM
+    if (timeStr.length === 8 && timeStr.includes(":")) {
+      // HH:MM:SS format
+      return timeStr.substring(0, 5); // Extract HH:MM
+    }
+
+    // If timeStr is already in HH:MM format, return as is
+    if (timeStr.length === 5 && timeStr.includes(":")) {
+      // HH:MM format
+      return timeStr;
+    }
+
+    // For any other format, return as is
+    return timeStr;
+  };
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ["matches", filterLeagueId, filterStatus, filterPublished],
@@ -91,8 +119,10 @@ export default function Matches() {
       if (filterPublished !== "all") {
         filters.published = filterPublished === "published";
       }
-      
-      const response = await matchService.getAllMatches(Object.keys(filters).length > 0 ? filters : undefined);
+
+      const response = await matchService.getAllMatches(
+        Object.keys(filters).length > 0 ? filters : undefined
+      );
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -165,7 +195,8 @@ export default function Matches() {
   const bulkImportMutation = useMutation({
     mutationFn: async (file: File) => {
       const response = await matchService.bulkImportMatches(file);
-      if (!response.success) throw new Error(response.error || "Failed to import matches");
+      if (!response.success)
+        throw new Error(response.error || "Failed to import matches");
       return response;
     },
     onSuccess: (response) => {
@@ -173,7 +204,9 @@ export default function Matches() {
       setIsImporting(false);
       setIsBulkImportDialogOpen(false);
       if (response.data) {
-        toast.success(`Bulk import completed. ${response.data.created} matches created, ${response.data.errors} errors.`);
+        toast.success(
+          `Bulk import completed. ${response.data.created} matches created, ${response.data.errors} errors.`
+        );
       } else {
         toast.success("Bulk import completed successfully");
       }
@@ -201,9 +234,11 @@ export default function Matches() {
       match_type: formData.match_type,
       published: formData.published,
       ...(formData.status === "finished" && {
-        home_score: formData.home_score !== "" ? parseInt(formData.home_score) : null,
-        away_score: formData.away_score !== "" ? parseInt(formData.away_score) : null,
-      })
+        home_score:
+          formData.home_score !== "" ? parseInt(formData.home_score) : null,
+        away_score:
+          formData.away_score !== "" ? parseInt(formData.away_score) : null,
+      }),
     };
 
     if (editingMatch) {
@@ -215,20 +250,23 @@ export default function Matches() {
 
   const handleEdit = (match: any) => {
     setEditingMatch(match);
-    
+
     // Extract date and time from match_date if it's a full datetime string
     let matchDate = "";
     let matchTime = "";
-    
+
     if (match.match_date) {
       // If match_date is a full datetime string, extract just the date part
-      if (match.match_date.includes('T')) {
-        const dateTimeParts = match.match_date.split('T');
+      if (match.match_date.includes("T")) {
+        const dateTimeParts = match.match_date.split("T");
         matchDate = dateTimeParts[0]; // YYYY-MM-DD part
-        
+
         // Extract time part if it exists
         if (dateTimeParts[1]) {
-          const timePart = dateTimeParts[1].split('+')[0].split('-')[0].split('Z')[0];
+          const timePart = dateTimeParts[1]
+            .split("+")[0]
+            .split("-")[0]
+            .split("Z")[0];
           matchTime = timePart.substring(0, 5); // HH:MM format
         }
       } else {
@@ -236,19 +274,19 @@ export default function Matches() {
         matchDate = match.match_date;
       }
     }
-    
+
     setFormData({
       league_id: match.league_id.toString(),
       home_team_id: match.home_team_id.toString(),
       away_team_id: match.away_team_id.toString(),
       match_date: matchDate,
-      match_time: matchTime || match.match_time || "",
+      match_time: formatTimeForInput(match.match_time), // Format time for input field
       venue: match.venue || "",
       status: match.status,
       allow_draw: match.allow_draw ?? true,
       home_score: match.home_score?.toString() || "",
       away_score: match.away_score?.toString() || "",
-      match_timezone: match.match_timezone || "UTC",
+      match_timezone: match.match_timezone || "Asia/Bangkok",
       big_match: match.big_match ?? false,
       derby: match.derby ?? false,
       match_type: match.match_type || "Normal",
@@ -271,10 +309,14 @@ export default function Matches() {
       allow_draw: true,
       home_score: "",
       away_score: "",
-      match_timezone: "UTC",
+      match_timezone: "Asia/Bangkok",
       big_match: false,
       derby: false,
-      match_type: "Normal" as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final',
+      match_type: "Normal" as
+        | "Normal"
+        | "Final"
+        | "Semi-Final"
+        | "Quarter-Final",
       published: false,
     });
   };
@@ -313,7 +355,11 @@ export default function Matches() {
               </Button>
             </DialogTrigger>
           </Dialog>
-          <Button className="gap-2" onClick={triggerFileInput} disabled={isImporting}>
+          <Button
+            className="gap-2"
+            onClick={triggerFileInput}
+            disabled={isImporting}
+          >
             <Upload className="h-4 w-4" />
             {isImporting ? "Importing..." : "Bulk Import"}
           </Button>
@@ -337,7 +383,10 @@ export default function Matches() {
             <SelectContent>
               <SelectItem value="all">All Leagues</SelectItem>
               {leagues?.map((league) => (
-                <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                <SelectItem
+                  key={league.league_id}
+                  value={league.league_id!.toString()}
+                >
                   {league.name}
                 </SelectItem>
               ))}
@@ -373,170 +422,186 @@ export default function Matches() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingMatch ? "Edit Match" : "Create Match"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="league">League</Label>
-                  <Select
-                    value={formData.league_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, league_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select league" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leagues?.map((league) => (
-                        <SelectItem
-                          key={league.league_id}
-                          value={league.league_id.toString()}
-                        >
-                          {league.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="finished">Finished</SelectItem>
-                      <SelectItem value="postponed">Postponed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Home Team</Label>
-                  <Popover open={homeTeamOpen} onOpenChange={setHomeTeamOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={homeTeamOpen}
-                        className="w-full justify-between"
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMatch ? "Edit Match" : "Create Match"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="league">League</Label>
+                <Select
+                  value={formData.league_id}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, league_id: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select league" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leagues?.map((league) => (
+                      <SelectItem
+                        key={league.league_id}
+                        value={league.league_id.toString()}
                       >
-                        {formData.home_team_id
-                          ? teams?.find((team) => team.team_id.toString() === formData.home_team_id)?.name
-                          : "Select home team..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput placeholder="Search team..." />
-                        <CommandList>
-                          <CommandEmpty>No team found.</CommandEmpty>
-                          <CommandGroup>
-                            {teams?.map((team) => (
-                              <CommandItem
-                                key={team.team_id}
-                                value={team.name}
-                                onSelect={() => {
-                                  setFormData({ 
-                                    ...formData, 
-                                    home_team_id: team.team_id.toString(),
-                                    venue: team.venue || formData.venue
-                                  });
-                                  setHomeTeamOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.home_team_id === team.team_id.toString() ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {team.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label>Away Team</Label>
-                  <Popover open={awayTeamOpen} onOpenChange={setAwayTeamOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={awayTeamOpen}
-                        className="w-full justify-between"
-                      >
-                        {formData.away_team_id
-                          ? teams?.find((team) => team.team_id.toString() === formData.away_team_id)?.name
-                          : "Select away team..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput placeholder="Search team..." />
-                        <CommandList>
-                          <CommandEmpty>No team found.</CommandEmpty>
-                          <CommandGroup>
-                            {teams?.map((team) => (
-                              <CommandItem
-                                key={team.team_id}
-                                value={team.name}
-                                onSelect={() => {
-                                  setFormData({ ...formData, away_team_id: team.team_id.toString() });
-                                  setAwayTeamOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.away_team_id === team.team_id.toString() ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {team.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                        {league.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="match_date">Match Date</Label>
-                  <Input
-                    id="match_date"
-                    type="date"
-                    value={formData.match_date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, match_date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="match_time">Match Time</Label>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="finished">Finished</SelectItem>
+                    <SelectItem value="postponed">Postponed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Home Team</Label>
+                <Popover open={homeTeamOpen} onOpenChange={setHomeTeamOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={homeTeamOpen}
+                      className="w-full justify-between"
+                    >
+                      {formData.home_team_id
+                        ? teams?.find(
+                            (team) =>
+                              team.team_id.toString() === formData.home_team_id
+                          )?.name
+                        : "Select home team..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search team..." />
+                      <CommandList>
+                        <CommandEmpty>No team found.</CommandEmpty>
+                        <CommandGroup>
+                          {teams?.map((team) => (
+                            <CommandItem
+                              key={team.team_id}
+                              value={team.name}
+                              onSelect={() => {
+                                setFormData({
+                                  ...formData,
+                                  home_team_id: team.team_id.toString(),
+                                  venue: team.venue || formData.venue,
+                                });
+                                setHomeTeamOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.home_team_id ===
+                                    team.team_id.toString()
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {team.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Away Team</Label>
+                <Popover open={awayTeamOpen} onOpenChange={setAwayTeamOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={awayTeamOpen}
+                      className="w-full justify-between"
+                    >
+                      {formData.away_team_id
+                        ? teams?.find(
+                            (team) =>
+                              team.team_id.toString() === formData.away_team_id
+                          )?.name
+                        : "Select away team..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search team..." />
+                      <CommandList>
+                        <CommandEmpty>No team found.</CommandEmpty>
+                        <CommandGroup>
+                          {teams?.map((team) => (
+                            <CommandItem
+                              key={team.team_id}
+                              value={team.name}
+                              onSelect={() => {
+                                setFormData({
+                                  ...formData,
+                                  away_team_id: team.team_id.toString(),
+                                });
+                                setAwayTeamOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.away_team_id ===
+                                    team.team_id.toString()
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {team.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="match_date">Match Date</Label>
+                <Input
+                  id="match_date"
+                  type="date"
+                  value={formData.match_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, match_date: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="match_time">Match Time</Label>
+                {formData.match_time && (
                   <Input
                     id="match_time"
                     type="time"
@@ -546,184 +611,198 @@ export default function Matches() {
                     }
                     required
                   />
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="venue">Venue</Label>
+              <Input
+                id="venue"
+                value={formData.venue}
+                onChange={(e) =>
+                  setFormData({ ...formData, venue: e.target.value })
+                }
+                placeholder="Enter venue"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="match_timezone">Timezone</Label>
+              <Select
+                value={formData.match_timezone}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, match_timezone: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UTC">UTC</SelectItem>
+                  <SelectItem value="Asia/Bangkok">Asia/Bangkok</SelectItem>
+                  <SelectItem value="America/New_York">
+                    America/New_York
+                  </SelectItem>
+                  <SelectItem value="America/Chicago">
+                    America/Chicago
+                  </SelectItem>
+                  <SelectItem value="America/Denver">America/Denver</SelectItem>
+                  <SelectItem value="America/Los_Angeles">
+                    America/Los_Angeles
+                  </SelectItem>
+                  <SelectItem value="Europe/London">Europe/London</SelectItem>
+                  <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
+                  <SelectItem value="Europe/Berlin">Europe/Berlin</SelectItem>
+                  <SelectItem value="Asia/Tokyo">Asia/Tokyo</SelectItem>
+                  <SelectItem value="Asia/Shanghai">Asia/Shanghai</SelectItem>
+                  <SelectItem value="Australia/Sydney">
+                    Australia/Sydney
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* New Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="big_match">Big Match</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="big_match"
+                    checked={formData.big_match}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, big_match: checked })
+                    }
+                  />
+                  <span>{formData.big_match ? "Yes" : "No"}</span>
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="venue">Venue</Label>
-                <Input
-                  id="venue"
-                  value={formData.venue}
-                  onChange={(e) =>
-                    setFormData({ ...formData, venue: e.target.value })
-                  }
-                  placeholder="Enter venue"
-                />
+                <Label htmlFor="derby">Derby (Rivalry)</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="derby"
+                    checked={formData.derby}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, derby: checked })
+                    }
+                  />
+                  <span>{formData.derby ? "Yes" : "No"}</span>
+                </div>
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="match_timezone">Timezone</Label>
+                <Label htmlFor="match_type">Match Type</Label>
                 <Select
-                  value={formData.match_timezone}
+                  value={formData.match_type}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, match_timezone: value })
+                    setFormData({
+                      ...formData,
+                      match_type: value as
+                        | "Normal"
+                        | "Final"
+                        | "Semi-Final"
+                        | "Quarter-Final",
+                    })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">America/New_York</SelectItem>
-                    <SelectItem value="America/Chicago">America/Chicago</SelectItem>
-                    <SelectItem value="America/Denver">America/Denver</SelectItem>
-                    <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
-                    <SelectItem value="Europe/London">Europe/London</SelectItem>
-                    <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
-                    <SelectItem value="Europe/Berlin">Europe/Berlin</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Asia/Tokyo</SelectItem>
-                    <SelectItem value="Asia/Shanghai">Asia/Shanghai</SelectItem>
-                    <SelectItem value="Australia/Sydney">Australia/Sydney</SelectItem>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                    <SelectItem value="Final">Final</SelectItem>
+                    <SelectItem value="Semi-Final">Semi-Final</SelectItem>
+                    <SelectItem value="Quarter-Final">Quarter-Final</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* New Fields */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="big_match">Big Match</Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="big_match"
-                      checked={formData.big_match}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, big_match: checked })
-                      }
-                    />
-                    <span>{formData.big_match ? "Yes" : "No"}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="derby">Derby (Rivalry)</Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="derby"
-                      checked={formData.derby}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, derby: checked })
-                      }
-                    />
-                    <span>{formData.derby ? "Yes" : "No"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="match_type">Match Type</Label>
-                  <Select
-                    value={formData.match_type}
-                    onValueChange={(value) =>
-                      setFormData({ 
-                        ...formData, 
-                        match_type: value as 'Normal' | 'Final' | 'Semi-Final' | 'Quarter-Final' 
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Normal">Normal</SelectItem>
-                      <SelectItem value="Final">Final</SelectItem>
-                      <SelectItem value="Semi-Final">Semi-Final</SelectItem>
-                      <SelectItem value="Quarter-Final">Quarter-Final</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="published">Published</Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="published"
-                      checked={formData.published}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, published: checked })
-                      }
-                    />
-                    <span>{formData.published ? "Yes" : "No"}</span>
-                  </div>
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="allow_draw">Allow Draw</Label>
+                <Label htmlFor="published">Published</Label>
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="allow_draw"
-                    checked={formData.allow_draw}
+                    id="published"
+                    checked={formData.published}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, allow_draw: checked })
+                      setFormData({ ...formData, published: checked })
                     }
                   />
-                  <span>{formData.allow_draw ? "Yes" : "No"}</span>
+                  <span>{formData.published ? "Yes" : "No"}</span>
                 </div>
               </div>
+            </div>
 
-              {formData.status === "finished" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="home_score">Home Score</Label>
-                    <Input
-                      id="home_score"
-                      type="number"
-                      min="0"
-                      value={formData.home_score}
-                      onChange={(e) =>
-                        setFormData({ ...formData, home_score: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="away_score">Away Score</Label>
-                    <Input
-                      id="away_score"
-                      type="number"
-                      min="0"
-                      value={formData.away_score}
-                      onChange={(e) =>
-                        setFormData({ ...formData, away_score: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-              {editingMatch && (
+            <div className="space-y-2">
+              <Label htmlFor="allow_draw">Allow Draw</Label>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="allow_draw"
+                  checked={formData.allow_draw}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, allow_draw: checked })
+                  }
+                />
+                <span>{formData.allow_draw ? "Yes" : "No"}</span>
+              </div>
+            </div>
+
+            {formData.status === "finished" && (
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Slug (auto-generated)</Label>
+                  <Label htmlFor="home_score">Home Score</Label>
                   <Input
-                    id="slug"
-                    value={editingMatch.slug || ""}
-                    readOnly
-                    className="bg-muted"
+                    id="home_score"
+                    type="number"
+                    min="0"
+                    value={formData.home_score}
+                    onChange={(e) =>
+                      setFormData({ ...formData, home_score: e.target.value })
+                    }
                   />
                 </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDialogClose}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingMatch ? "Update" : "Create"}
-                </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="away_score">Away Score</Label>
+                  <Input
+                    id="away_score"
+                    type="number"
+                    min="0"
+                    value={formData.away_score}
+                    onChange={(e) =>
+                      setFormData({ ...formData, away_score: e.target.value })
+                    }
+                  />
+                </div>
               </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+            )}
+            {editingMatch && (
+              <div className="space-y-2">
+                <Label htmlFor="slug">Slug (auto-generated)</Label>
+                <Input
+                  id="slug"
+                  value={editingMatch.slug || ""}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDialogClose}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingMatch ? "Update" : "Create"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <Table>
@@ -754,26 +833,32 @@ export default function Matches() {
                   colSpan={9}
                   className="text-center text-muted-foreground"
                 >
-                  {matches?.length === 0 ? "No matches found. Create your first match!" : "No matches match the filter criteria."}
+                  {matches?.length === 0
+                    ? "No matches found. Create your first match!"
+                    : "No matches match the filter criteria."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredMatches?.map((match) => (
                 <TableRow key={match.match_id}>
                   <TableCell>
-                    {leagues?.find(league => league.league_id === match.league_id)?.name || 'Unknown'}
+                    {leagues?.find(
+                      (league) => league.league_id === match.league_id
+                    )?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find(team => team.team_id === match.home_team_id)?.name || 'Unknown'}
+                    {teams?.find((team) => team.team_id === match.home_team_id)
+                      ?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find(team => team.team_id === match.away_team_id)?.name || 'Unknown'}
+                    {teams?.find((team) => team.team_id === match.away_team_id)
+                      ?.name || "Unknown"}
                   </TableCell>
                   <TableCell>
                     {format(new Date(match.match_date), "MMM dd, yyyy")}
                   </TableCell>
                   <TableCell>{match.match_time}</TableCell>
-                  <TableCell>{match.match_timezone || 'UTC'}</TableCell>
+                  <TableCell>{match.match_timezone || "UTC"}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded text-xs ${
@@ -786,12 +871,13 @@ export default function Matches() {
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+                      {match.status.charAt(0).toUpperCase() +
+                        match.status.slice(1)}
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className="px-2 py-1 rounded text-xs bg-secondary text-secondary-foreground">
-                      {match.match_type || 'Normal'}
+                      {match.match_type || "Normal"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -822,7 +908,9 @@ export default function Matches() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => window.open(`/match/${match.match_id}`, '_blank')}
+                        onClick={() =>
+                          window.open(`/match/${match.match_id}`, "_blank")
+                        }
                         title="View public prediction page"
                       >
                         <ExternalLink className="h-4 w-4" />
