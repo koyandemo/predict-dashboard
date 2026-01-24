@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import * as matchService from "@/services/matchService";
 import * as leagueService from "@/services/leagueService";
 import * as teamService from "@/services/teamService";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Matches() {
   const queryClient = useQueryClient();
@@ -552,8 +553,9 @@ export default function Matches() {
                   <PopoverContent className="w-full p-0">
                     <Command>
                       <CommandInput placeholder="Search team..." />
-                      <CommandList>
+                      <CommandList className="max-h-64 overflow-y-auto">
                         <CommandEmpty>No team found.</CommandEmpty>
+                        <ScrollArea className="h-60">
                         <CommandGroup>
                           {teams?.map((team) => (
                             <CommandItem
@@ -580,6 +582,7 @@ export default function Matches() {
                             </CommandItem>
                           ))}
                         </CommandGroup>
+                        </ScrollArea>
                       </CommandList>
                     </Command>
                   </PopoverContent>
@@ -601,7 +604,6 @@ export default function Matches() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="match_time">Match Time</Label>
-                {formData.match_time && (
                   <Input
                     id="match_time"
                     type="time"
@@ -611,7 +613,6 @@ export default function Matches() {
                     }
                     required
                   />
-                )}
               </div>
             </div>
 
