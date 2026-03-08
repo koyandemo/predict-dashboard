@@ -52,15 +52,22 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import * as matchService from "@/services/matchService";
-import * as leagueService from "@/services/leagueService";
-import * as teamService from "@/services/teamService";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getAllLeagues } from "@/apiConfig/league.api";
+import { getAllTeams } from "@/apiConfig/team.api";
+import {
+  postMatch,
+  putMatch,
+  deleteMatch,
+  getAllMatches,
+} from "@/apiConfig/match.api";
+import { MatchT } from "@/types/match.type";
 
 export default function Matches() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkImportDialogOpen, setIsBulkImportDialogOpen] = useState(false);
-  const [editingMatch, setEditingMatch] = useState<any>(null);
+  const [editingMatch, setEditingMatch] = useState<MatchT>(null);
   const [homeTeamOpen, setHomeTeamOpen] = useState(false);
   const [awayTeamOpen, setAwayTeamOpen] = useState(false);
   const [filterLeagueId, setFilterLeagueId] = useState("all");
@@ -70,42 +77,26 @@ export default function Matches() {
     league_id: "",
     home_team_id: "",
     away_team_id: "",
-    match_date: "",
-    match_time: "",
+    kickoff: "",
     venue: "",
-    status: "scheduled",
+    status: "SCHEDULED",
     allow_draw: true,
     home_score: "",
     away_score: "",
-    match_timezone: "Asia/Bangkok",
+    timezone: "Asia/Bangkok",
     big_match: false,
     derby: false,
-    match_type: "Normal" as "Normal" | "Final" | "Semi-Final" | "Quarter-Final",
+    type: "NORMAL" as
+      | "NORMAL"
+      | "FINAL"
+      | "SEMIFINAL"
+      | "QUARTERFINAL"
+      | "FRIENDLY",
     published: false,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
-
-  // Helper function to format time for input field
-  const formatTimeForInput = (timeStr: string): string => {
-    if (!timeStr) return "";
-
-    // If timeStr is in HH:MM:SS format, extract HH:MM
-    if (timeStr.length === 8 && timeStr.includes(":")) {
-      // HH:MM:SS format
-      return timeStr.substring(0, 5); // Extract HH:MM
-    }
-
-    // If timeStr is already in HH:MM format, return as is
-    if (timeStr.length === 5 && timeStr.includes(":")) {
-      // HH:MM format
-      return timeStr;
-    }
-
-    // For any other format, return as is
-    return timeStr;
-  };
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ["matches", filterLeagueId, filterStatus, filterPublished],
@@ -120,19 +111,16 @@ export default function Matches() {
       if (filterPublished !== "all") {
         filters.published = filterPublished === "published";
       }
-
-      const response = await matchService.getAllMatches(
-        Object.keys(filters).length > 0 ? filters : undefined
-      );
+      const response = await getAllMatches(filters);
       if (!response.success) throw new Error(response.error);
-      return response.data;
+      return response.data?.data;
     },
   });
 
   const { data: leagues } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      const response = await leagueService.getAllLeagues();
+      const response = await getAllLeagues();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -141,7 +129,7 @@ export default function Matches() {
   const { data: teams } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
-      const response = await teamService.getAllTeams();
+      const response = await getAllTeams();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -149,7 +137,8 @@ export default function Matches() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await matchService.createMatch(data);
+      const response = await postMatch(data);
+      // const response = await matchService.createMatch(data);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -165,7 +154,8 @@ export default function Matches() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await matchService.updateMatch(id, data);
+      // const response = await matchService.updateMatch(id, data);
+      const response = await putMatch(id, data);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -181,7 +171,8 @@ export default function Matches() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await matchService.deleteMatch(id);
+      const response = await deleteMatch(id);
+      // const response = await matchService.deleteMatch(id);
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
@@ -224,15 +215,14 @@ export default function Matches() {
       league_id: parseInt(formData.league_id),
       home_team_id: parseInt(formData.home_team_id),
       away_team_id: parseInt(formData.away_team_id),
-      match_date: formData.match_date,
-      match_time: formData.match_time,
+      kickoff: formData.kickoff,
       venue: formData.venue,
       status: formData.status,
       allow_draw: formData.allow_draw,
-      match_timezone: formData.match_timezone,
+      timezone: formData.timezone,
       big_match: formData.big_match,
       derby: formData.derby,
-      match_type: formData.match_type,
+      type: formData.type,
       published: formData.published,
       ...(formData.status === "finished" && {
         home_score:
@@ -243,7 +233,7 @@ export default function Matches() {
     };
 
     if (editingMatch) {
-      updateMutation.mutate({ id: editingMatch.match_id, data });
+      updateMutation.mutate({ id: editingMatch.id, data });
     } else {
       createMutation.mutate(data);
     }
@@ -252,45 +242,20 @@ export default function Matches() {
   const handleEdit = (match: any) => {
     setEditingMatch(match);
 
-    // Extract date and time from match_date if it's a full datetime string
-    let matchDate = "";
-    let matchTime = "";
-
-    if (match.match_date) {
-      // If match_date is a full datetime string, extract just the date part
-      if (match.match_date.includes("T")) {
-        const dateTimeParts = match.match_date.split("T");
-        matchDate = dateTimeParts[0]; // YYYY-MM-DD part
-
-        // Extract time part if it exists
-        if (dateTimeParts[1]) {
-          const timePart = dateTimeParts[1]
-            .split("+")[0]
-            .split("-")[0]
-            .split("Z")[0];
-          matchTime = timePart.substring(0, 5); // HH:MM format
-        }
-      } else {
-        // If it's already just a date
-        matchDate = match.match_date;
-      }
-    }
-
     setFormData({
       league_id: match.league_id.toString(),
       home_team_id: match.home_team_id.toString(),
       away_team_id: match.away_team_id.toString(),
-      match_date: matchDate,
-      match_time: formatTimeForInput(match.match_time), // Format time for input field
+      kickoff: match.kickoff,
       venue: match.venue || "",
       status: match.status,
       allow_draw: match.allow_draw ?? true,
       home_score: match.home_score?.toString() || "",
       away_score: match.away_score?.toString() || "",
-      match_timezone: match.match_timezone || "Asia/Bangkok",
+      timezone: match.timezone || "Asia/Bangkok",
       big_match: match.big_match ?? false,
       derby: match.derby ?? false,
-      match_type: match.match_type || "Normal",
+      type: match.type || "Normal",
       published: match.published ?? false,
     });
     setIsDialogOpen(true);
@@ -303,21 +268,21 @@ export default function Matches() {
       league_id: "",
       home_team_id: "",
       away_team_id: "",
-      match_date: "",
-      match_time: "",
+      kickoff: "",
       venue: "",
-      status: "scheduled",
+      status: "SCHEDULED",
       allow_draw: true,
       home_score: "",
       away_score: "",
-      match_timezone: "Asia/Bangkok",
+      timezone: "Asia/Bangkok",
       big_match: false,
       derby: false,
-      match_type: "Normal" as
-        | "Normal"
-        | "Final"
-        | "Semi-Final"
-        | "Quarter-Final",
+      type: "NORMAL" as
+        | "NORMAL"
+        | "FINAL"
+        | "SEMIFINAL"
+        | "QUARTERFINAL"
+        | "FRIENDLY",
       published: false,
     });
   };
@@ -339,6 +304,7 @@ export default function Matches() {
 
   // Matches are already filtered by the API
   const filteredMatches = matches;
+  console.log(matches, "330");
 
   return (
     <div className="space-y-6">
@@ -384,10 +350,7 @@ export default function Matches() {
             <SelectContent>
               <SelectItem value="all">All Leagues</SelectItem>
               {leagues?.map((league) => (
-                <SelectItem
-                  key={league.league_id}
-                  value={league.league_id!.toString()}
-                >
+                <SelectItem key={league.id} value={league.id!.toString()}>
                   {league.name}
                 </SelectItem>
               ))}
@@ -401,10 +364,10 @@ export default function Matches() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="live">Live</SelectItem>
-              <SelectItem value="finished">Finished</SelectItem>
-              <SelectItem value="postponed">Postponed</SelectItem>
+              <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+              <SelectItem value="LIVE">Live</SelectItem>
+              <SelectItem value="FINISHED">Finished</SelectItem>
+              <SelectItem value="POSTPONED">Postponed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -444,10 +407,7 @@ export default function Matches() {
                   </SelectTrigger>
                   <SelectContent>
                     {leagues?.map((league) => (
-                      <SelectItem
-                        key={league.league_id}
-                        value={league.league_id.toString()}
-                      >
+                      <SelectItem key={league.id} value={league.id.toString()}>
                         {league.name}
                       </SelectItem>
                     ))}
@@ -466,10 +426,10 @@ export default function Matches() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="finished">Finished</SelectItem>
-                    <SelectItem value="postponed">Postponed</SelectItem>
+                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                    <SelectItem value="LIVE">Live</SelectItem>
+                    <SelectItem value="FINISHED">Finished</SelectItem>
+                    <SelectItem value="POSTPONED">Postponed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -488,7 +448,7 @@ export default function Matches() {
                       {formData.home_team_id
                         ? teams?.find(
                             (team) =>
-                              team.team_id.toString() === formData.home_team_id
+                              team.id.toString() === formData.home_team_id
                           )?.name
                         : "Select home team..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -502,12 +462,12 @@ export default function Matches() {
                         <CommandGroup>
                           {teams?.map((team) => (
                             <CommandItem
-                              key={team.team_id}
+                              key={team.id}
                               value={team.name}
                               onSelect={() => {
                                 setFormData({
                                   ...formData,
-                                  home_team_id: team.team_id.toString(),
+                                  home_team_id: team.id.toString(),
                                   venue: team.venue || formData.venue,
                                 });
                                 setHomeTeamOpen(false);
@@ -516,8 +476,7 @@ export default function Matches() {
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  formData.home_team_id ===
-                                    team.team_id.toString()
+                                  formData.home_team_id === team.id.toString()
                                     ? "opacity-100"
                                     : "opacity-0"
                                 )}
@@ -544,7 +503,7 @@ export default function Matches() {
                       {formData.away_team_id
                         ? teams?.find(
                             (team) =>
-                              team.team_id.toString() === formData.away_team_id
+                              team.id.toString() === formData.away_team_id
                           )?.name
                         : "Select away team..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -556,32 +515,31 @@ export default function Matches() {
                       <CommandList className="max-h-64 overflow-y-auto">
                         <CommandEmpty>No team found.</CommandEmpty>
                         <ScrollArea className="h-60">
-                        <CommandGroup>
-                          {teams?.map((team) => (
-                            <CommandItem
-                              key={team.team_id}
-                              value={team.name}
-                              onSelect={() => {
-                                setFormData({
-                                  ...formData,
-                                  away_team_id: team.team_id.toString(),
-                                });
-                                setAwayTeamOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.away_team_id ===
-                                    team.team_id.toString()
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {team.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
+                          <CommandGroup>
+                            {teams?.map((team) => (
+                              <CommandItem
+                                key={team.id}
+                                value={team.name}
+                                onSelect={() => {
+                                  setFormData({
+                                    ...formData,
+                                    away_team_id: team.id.toString(),
+                                  });
+                                  setAwayTeamOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.away_team_id === team.id.toString()
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {team.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
                         </ScrollArea>
                       </CommandList>
                     </Command>
@@ -589,31 +547,17 @@ export default function Matches() {
                 </Popover>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="match_date">Match Date</Label>
-                <Input
-                  id="match_date"
-                  type="date"
-                  value={formData.match_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, match_date: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="match_time">Match Time</Label>
-                  <Input
-                    id="match_time"
-                    type="time"
-                    value={formData.match_time}
-                    onChange={(e) =>
-                      setFormData({ ...formData, match_time: e.target.value })
-                    }
-                    required
-                  />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="kickoff">Match Date</Label>
+              <Input
+                id="kickoff"
+                type="datetime"
+                value={formData.kickoff}
+                onChange={(e) =>
+                  setFormData({ ...formData, kickoff: e.target.value })
+                }
+                required
+              />
             </div>
 
             <div className="space-y-2">
@@ -629,11 +573,11 @@ export default function Matches() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="match_timezone">Timezone</Label>
+              <Label htmlFor="timezone">Timezone</Label>
               <Select
-                value={formData.match_timezone}
+                value={formData.timezone}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, match_timezone: value })
+                  setFormData({ ...formData, timezone: value })
                 }
               >
                 <SelectTrigger>
@@ -696,17 +640,18 @@ export default function Matches() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="match_type">Match Type</Label>
+                <Label htmlFor="type">Match Type</Label>
                 <Select
-                  value={formData.match_type}
+                  value={formData.type}
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      match_type: value as
-                        | "Normal"
-                        | "Final"
-                        | "Semi-Final"
-                        | "Quarter-Final",
+                      type: value as
+                        | "NORMAL"
+                        | "FINAL"
+                        | "SEMIFINAL"
+                        | "QUARTERFINAL"
+                        | "FRIENDLY",
                     })
                   }
                 >
@@ -714,10 +659,11 @@ export default function Matches() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Normal">Normal</SelectItem>
-                    <SelectItem value="Final">Final</SelectItem>
-                    <SelectItem value="Semi-Final">Semi-Final</SelectItem>
-                    <SelectItem value="Quarter-Final">Quarter-Final</SelectItem>
+                    <SelectItem value="NORMAL">Normal</SelectItem>
+                    <SelectItem value="FINAL">Final</SelectItem>
+                    <SelectItem value="SEMIFINAL">Semi-Final</SelectItem>
+                    <SelectItem value="QUARTERFINAL">Quarter-Final</SelectItem>
+                    <SelectItem value="FRIENDLY">FRIENDLY</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -813,7 +759,6 @@ export default function Matches() {
               <TableHead>Home Team</TableHead>
               <TableHead>Away Team</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
               <TableHead>Timezone</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Type</TableHead>
@@ -841,33 +786,31 @@ export default function Matches() {
               </TableRow>
             ) : (
               filteredMatches?.map((match) => (
-                <TableRow key={match.match_id}>
+                <TableRow key={match.id}>
                   <TableCell>
-                    {leagues?.find(
-                      (league) => league.league_id === match.league_id
-                    )?.name || "Unknown"}
+                    {leagues?.find((league) => league.id === match.id)?.name ||
+                      "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find((team) => team.team_id === match.home_team_id)
+                    {teams?.find((team) => team.id === match.home_team.id)
                       ?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find((team) => team.team_id === match.away_team_id)
+                    {teams?.find((team) => team.id === match.away_team.id)
                       ?.name || "Unknown"}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(match.match_date), "MMM dd, yyyy")}
+                    {format(new Date(match.kickoff), "MMM dd, yyyy")}
                   </TableCell>
-                  <TableCell>{match.match_time}</TableCell>
-                  <TableCell>{match.match_timezone || "UTC"}</TableCell>
+                  <TableCell>{match.timezone || "UTC"}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded text-xs ${
-                        match.status === "scheduled"
+                        match.status === "SCHEDULED"
                           ? "bg-info/20 text-info"
-                          : match.status === "live"
+                          : match.status === "LIVE"
                           ? "bg-success/20 text-success"
-                          : match.status === "finished"
+                          : match.status === "FINISHED"
                           ? "bg-primary/20 text-primary"
                           : "bg-muted text-muted-foreground"
                       }`}
@@ -910,7 +853,7 @@ export default function Matches() {
                         variant="outline"
                         size="icon"
                         onClick={() =>
-                          window.open(`/match/${match.match_id}`, "_blank")
+                          window.open(`/match/${match.id}`, "_blank")
                         }
                         title="View public prediction page"
                       >
@@ -926,7 +869,7 @@ export default function Matches() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => deleteMutation.mutate(match.match_id)}
+                        onClick={() => deleteMutation.mutate(match.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

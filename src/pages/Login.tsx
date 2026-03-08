@@ -4,13 +4,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "sonner";
-import { BaseService, ApiResponse } from "@/services/BaseService";
+import { postLogin } from "@/apiConfig/auth.api";
+import { getErrMsg } from "@/lib/utils";
 
-const baseService = new BaseService();
-
-export default function Login() {
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +26,6 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || "/";
 
-  // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });
@@ -32,26 +37,18 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await baseService.create<any>('users/login', { email, password });
+      const res = await postLogin(email, password);
+      const { user, token } = res?.data;
 
-      if (result.success) {
-        // The login endpoint returns token and user at root level, not in data
-        const token = (result as any).token || result.data?.token;
-        const user = (result as any).user || result.data?.user;
-        
-        if (token && user) {
-          // Use the auth context login function
-          login(token, user);
-          toast.success("Login successful!");
-          navigate(from, { replace: true });
-        } else {
-          toast.error("Invalid response from server");
-        }
+      if (token && user) {
+        login(token, user);
+        toast.success("Login successful!");
+        navigate(from, { replace: true });
       } else {
-        toast.error(result.message || result.error || "Login failed");
+        toast.error("Invalid response from server");
       }
     } catch (error) {
-      toast.error("An error occurred during login");
+      toast.error(getErrMsg(error, "message"));
     } finally {
       setLoading(false);
     }
@@ -61,7 +58,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Admin Login</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            Admin Login
+          </CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access the admin panel
           </CardDescription>

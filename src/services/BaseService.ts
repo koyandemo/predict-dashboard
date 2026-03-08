@@ -1,11 +1,3 @@
-/**
- * Base service class for common API operations
- * Following SOLID principles:
- * - Single Responsibility Principle: Only handles common API operations
- * - Open/Closed Principle: Extendable but not modifiable
- * - Dependency Inversion Principle: Depends on abstractions, not concretions
- */
-
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;

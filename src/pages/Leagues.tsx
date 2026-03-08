@@ -22,22 +22,19 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
-import * as leagueService from "@/services/leagueService";
+import { LeagueT } from "@/types/league.type";
+import {
+  deleteLeague,
+  getAllLeagues,
+  postLeague,
+  putLeague,
+} from "@/apiConfig/league.api";
 
 interface LeagueFormData {
   name: string;
   country: string;
   logo_url: string;
   sort_order: number;
-}
-
-interface League {
-  league_id: number;
-  name: string;
-  country: string;
-  logo_url: string;
-  sort_order?: number;
-  slug?: string;
 }
 
 interface UpdateSortOrderResult {
@@ -49,18 +46,18 @@ interface UpdateSortOrderResult {
 export default function Leagues() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingLeague, setEditingLeague] = useState<League | null>(null);
-  const [formData, setFormData] = useState<LeagueFormData>({ 
-    name: "", 
-    country: "", 
-    logo_url: "", 
-    sort_order: 0 
+  const [editingLeague, setEditingLeague] = useState<LeagueT | null>(null);
+  const [formData, setFormData] = useState<LeagueFormData>({
+    name: "",
+    country: "",
+    logo_url: "",
+    sort_order: 0,
   });
   const [dragging, setDragging] = useState(false);
 
   const onDragEnd = (result: DropResult) => {
     setDragging(false);
-    
+
     // Dropped outside the list
     if (!result.destination) {
       return;
@@ -72,22 +69,30 @@ export default function Leagues() {
     items.splice(result.destination.index, 0, reorderedItem);
 
     // Update sort orders
+    //@ts-ignore
     updateSortOrderMutation.mutate(items);
   };
-  
-  const { data: leagues, isLoading, error } = useQuery({
+
+  const {
+    data: leagues,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      const response = await leagueService.getAllLeagues();
+      const response = await getAllLeagues();
       if (!response.success) throw new Error(response.error);
-      // Sort leagues by sort_order for display
-      return response.data?.sort((a: League, b: League) => (a.sort_order || 0) - (b.sort_order || 0)) || [];
+      return (
+        response.data?.sort(
+          (a: LeagueT, b: LeagueT) => (a.sort_order || 0) - (b.sort_order || 0)
+        ) || []
+      );
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Omit<LeagueFormData, 'sort_order'>) => {
-      const response = await leagueService.createLeague(data);
+    mutationFn: async (data: Omit<LeagueFormData, "sort_order">) => {
+      const response = await postLeague(data as LeagueT);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -108,9 +113,9 @@ export default function Leagues() {
       data,
     }: {
       id: number;
-      data: Omit<LeagueFormData, 'sort_order'>;
+      data: Omit<LeagueFormData, "sort_order">;
     }) => {
-      const response = await leagueService.updateLeague(id, data);
+      const response = await putLeague(id, data as LeagueT);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -128,7 +133,7 @@ export default function Leagues() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await leagueService.deleteLeague(id);
+      const response = await deleteLeague(id);
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
@@ -142,42 +147,47 @@ export default function Leagues() {
 
   // Update league sort orders
   const updateSortOrderMutation = useMutation({
-    mutationFn: async (updatedLeagues: League[]) => {
+    mutationFn: async (updatedLeagues: LeagueT[]) => {
       const promises = updatedLeagues.map(async (league, index) => {
         try {
-          // Try to update with sort_order first
-          const result = await leagueService.updateLeague(league.league_id, { 
-            name: league.name, 
-            country: league.country, 
-            logo_url: league.logo_url, 
-            sort_order: index 
-          });
+          const result = await putLeague(league.id, {
+            name: league.name,
+            country: league.country,
+            logo_url: league.logo_url,
+            sort_order: index,
+          } as LeagueT);
           return result;
         } catch (error: any) {
           // If it's a column error, try without sort_order
-          if (error.message && (error.message.includes('sort_order') || error.message.includes('column'))) {
+          if (
+            error.message &&
+            (error.message.includes("sort_order") ||
+              error.message.includes("column"))
+          ) {
             try {
-              const result = await leagueService.updateLeague(league.league_id, { 
-                name: league.name, 
-                country: league.country, 
-                logo_url: league.logo_url
-              });
+              const result = await putLeague(league.id, {
+                name: league.name,
+                country: league.country,
+                logo_url: league.logo_url,
+              } as LeagueT);
               return result;
             } catch (retryError: any) {
               return { success: false, error: retryError.message };
             }
           }
-          
+
           // Return a failed result structure
           return { success: false, error: error.message };
         }
       });
-      
+
       const results = await Promise.all(promises);
-      
+
       // Check if all updates were successful
       // Handle both successful responses and potential errors
-      const failedUpdates = results.filter(result => !result || (result.success === false) || !!result.error);
+      const failedUpdates = results.filter(
+        (result) => !result || result.success === false || !!result.error
+      );
       if (failedUpdates.length > 0) {
         // Even if some updates failed, we'll still show a partial success message
         if (failedUpdates.length < results.length) {
@@ -185,13 +195,17 @@ export default function Leagues() {
         }
         throw new Error(`Failed to update ${failedUpdates.length} league(s)`);
       }
-      
+
       return results;
     },
     onSuccess: (data: UpdateSortOrderResult | any[]) => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
-      if (data && typeof data === 'object' && 'partialSuccess' in data) {
-        toast.success(`League order updated with ${(data as UpdateSortOrderResult).failedCount} failures`);
+      if (data && typeof data === "object" && "partialSuccess" in data) {
+        toast.success(
+          `League order updated with ${
+            (data as UpdateSortOrderResult).failedCount
+          } failures`
+        );
       } else {
         toast.success("League order updated successfully");
       }
@@ -204,30 +218,30 @@ export default function Leagues() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingLeague) {
-      updateMutation.mutate({ 
-        id: editingLeague.league_id, 
-        data: { 
-          name: formData.name, 
-          country: formData.country, 
-          logo_url: formData.logo_url 
-        } 
+      updateMutation.mutate({
+        id: editingLeague.id,
+        data: {
+          name: formData.name,
+          country: formData.country,
+          logo_url: formData.logo_url,
+        },
       });
     } else {
-      createMutation.mutate({ 
-        name: formData.name, 
-        country: formData.country, 
-        logo_url: formData.logo_url 
+      createMutation.mutate({
+        name: formData.name,
+        country: formData.country,
+        logo_url: formData.logo_url,
       });
     }
   };
 
-  const handleEdit = (league: League) => {
+  const handleEdit = (league: LeagueT) => {
     setEditingLeague(league);
-    setFormData({ 
-      name: league.name, 
+    setFormData({
+      name: league.name,
       country: league.country,
       logo_url: league.logo_url || "",
-      sort_order: league.sort_order || 0
+      sort_order: league.sort_order || 0,
     });
     setIsDialogOpen(true);
   };
@@ -301,11 +315,16 @@ export default function Leagues() {
                   type="number"
                   value={formData.sort_order}
                   onChange={(e) =>
-                    setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      sort_order: parseInt(e.target.value) || 0,
+                    })
                   }
                   placeholder="0"
                 />
-                <p className="text-sm text-muted-foreground">Lower numbers appear first</p>
+                <p className="text-sm text-muted-foreground">
+                  Lower numbers appear first
+                </p>
               </div>
               {editingLeague && (
                 <div className="space-y-2">
@@ -341,8 +360,9 @@ export default function Leagues() {
             <TableHeader>
               <TableRow>
                 <TableHead>Drag</TableHead>
-                <TableHead>Logo</TableHead>
                 <TableHead>ID</TableHead>
+                <TableHead>Sort Id</TableHead>
+                <TableHead>Logo</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -359,19 +379,29 @@ export default function Leagues() {
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-red-500">
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-red-500"
+                      >
                         Error: {error.message}
                       </TableCell>
                     </TableRow>
                   ) : leagues?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground"
+                      >
                         No leagues found. Create your first league!
                       </TableCell>
                     </TableRow>
                   ) : (
-                    leagues?.map((league: League, index: number) => (
-                      <Draggable key={league.league_id} draggableId={league.league_id.toString()} index={index}>
+                    leagues?.map((league: LeagueT, index: number) => (
+                      <Draggable
+                        key={league.id}
+                        draggableId={league.id.toString()}
+                        index={index}
+                      >
                         {(provided, snapshot) => (
                           <TableRow
                             ref={provided.innerRef}
@@ -382,6 +412,8 @@ export default function Leagues() {
                             <TableCell>
                               <GripVertical className="h-4 w-4 cursor-move" />
                             </TableCell>
+                            <TableCell>{league.id}</TableCell>
+                            <TableCell>{league.sort_order}</TableCell>
                             <TableCell>
                               {league.logo_url ? (
                                 <img
@@ -395,8 +427,10 @@ export default function Leagues() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell>{league.league_id}</TableCell>
-                            <TableCell className="font-medium">{league.name}</TableCell>
+
+                            <TableCell className="font-medium">
+                              {league.name}
+                            </TableCell>
                             <TableCell>{league.country}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-2 justify-end">
@@ -410,7 +444,9 @@ export default function Leagues() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  onClick={() => deleteMutation.mutate(league.league_id)}
+                                  onClick={() =>
+                                    deleteMutation.mutate(league.id)
+                                  }
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

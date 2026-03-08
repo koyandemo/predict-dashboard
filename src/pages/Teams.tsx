@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,14 @@ import {
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as teamService from "@/services/teamService";
-import * as leagueService from "@/services/leagueService";
+import { getAllLeagues } from "@/apiConfig/league.api";
+import {
+  deleteTeam,
+  getAllTeams,
+  postTeam,
+  putTeam,
+} from "@/apiConfig/team.api";
+import { TeamT } from "@/types/team.type";
 
 export default function Teams() {
   const queryClient = useQueryClient();
@@ -43,7 +50,7 @@ export default function Teams() {
     short_code: "",
     logo_url: "",
     country: "",
-    team_type: "club" as 'club' | 'country',
+    type: "club" as "club" | "country",
     league_id: undefined as number | undefined,
     venue: "",
   });
@@ -51,7 +58,7 @@ export default function Teams() {
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
-      const response = await teamService.getAllTeams();
+      const response = await getAllTeams();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -60,7 +67,7 @@ export default function Teams() {
   const { data: leagues } = useQuery({
     queryKey: ["leagues"],
     queryFn: async () => {
-      const response = await leagueService.getAllLeagues();
+      const response = await getAllLeagues();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -68,7 +75,8 @@ export default function Teams() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await teamService.createTeam(data);
+      // const response = await teamService.createTeam(data);
+      const response = await postTeam(data as TeamT);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -76,7 +84,15 @@ export default function Teams() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team created successfully");
       setIsDialogOpen(false);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
+      setFormData({
+        name: "",
+        short_code: "",
+        logo_url: "",
+        country: "",
+        type: "club",
+        league_id: undefined,
+        venue: "",
+      });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create team");
@@ -84,14 +100,8 @@ export default function Teams() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: typeof formData;
-    }) => {
-      const response = await teamService.updateTeam(id, data);
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      const response = await putTeam(id, data as TeamT);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -100,7 +110,15 @@ export default function Teams() {
       toast.success("Team updated successfully");
       setIsDialogOpen(false);
       setEditingTeam(null);
-      setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
+      setFormData({
+        name: "",
+        short_code: "",
+        logo_url: "",
+        country: "",
+        type: "club",
+        league_id: undefined,
+        venue: "",
+      });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update team");
@@ -109,7 +127,7 @@ export default function Teams() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await teamService.deleteTeam(id);
+      const response = await deleteTeam(id);
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
@@ -127,7 +145,7 @@ export default function Teams() {
         id: parseInt(id),
         venue: venue || "",
       }));
-      
+
       const response = await teamService.batchUpdateTeams(teamsToUpdate);
       if (!response.success) throw new Error("Failed to update teams");
       return response.data;
@@ -146,132 +164,132 @@ export default function Teams() {
   // Auto-populate known venues
   const autoPopulateVenues = async () => {
     if (!teams) return;
-    
+
     // Known venue mappings
     const venueMappings: Record<string, string> = {
       // Premier League
-      'Arsenal': 'Emirates Stadium',
-      'Aston Villa': 'Villa Park',
-      'Bournemouth': 'Vitality Stadium',
-      'Brentford': 'Gtech Community Stadium',
-      'Brighton & Hove Albion': 'Amex Stadium',
-      'Burnley': 'Turf Moor',
-      'Chelsea': 'Stamford Bridge',
-      'Crystal Palace': 'Selhurst Park',
-      'Everton': 'Goodison Park',
-      'Fulham': 'Craven Cottage',
-      'Liverpool': 'Anfield',
-      'Luton Town': 'Kenilworth Road',
-      'Manchester City': 'Etihad Stadium',
-      'Manchester United': 'Old Trafford',
-      'Newcastle United': "St. James' Park",
-      'Nottingham Forest': 'City Ground',
-      'Sheffield United': 'Bramall Lane',
-      'Tottenham Hotspur': 'Tottenham Hotspur Stadium',
-      'West Ham United': 'London Stadium',
-      'Wolves': 'Molineux Stadium',
-      
+      Arsenal: "Emirates Stadium",
+      "Aston Villa": "Villa Park",
+      Bournemouth: "Vitality Stadium",
+      Brentford: "Gtech Community Stadium",
+      "Brighton & Hove Albion": "Amex Stadium",
+      Burnley: "Turf Moor",
+      Chelsea: "Stamford Bridge",
+      "Crystal Palace": "Selhurst Park",
+      Everton: "Goodison Park",
+      Fulham: "Craven Cottage",
+      Liverpool: "Anfield",
+      "Luton Town": "Kenilworth Road",
+      "Manchester City": "Etihad Stadium",
+      "Manchester United": "Old Trafford",
+      "Newcastle United": "St. James' Park",
+      "Nottingham Forest": "City Ground",
+      "Sheffield United": "Bramall Lane",
+      "Tottenham Hotspur": "Tottenham Hotspur Stadium",
+      "West Ham United": "London Stadium",
+      Wolves: "Molineux Stadium",
+
       // La Liga
-      'Real Madrid': 'Santiago Bernabéu',
-      'Barcelona': 'Camp Nou',
-      'Atlético Madrid': 'Wanda Metropolitano',
-      'Real Sociedad': 'Anoeta Stadium',
-      'Villarreal': 'Estadio de la Cerámica',
-      'Real Betis': 'Benito Villamarín',
-      'Athletic Club': 'San Mamés',
-      'Valencia': 'Mestalla',
-      'Sevilla': 'Ramón Sánchez Pizjuán',
-      'Getafe': 'Coliseum Alfonso Pérez',
-      'Celta Vigo': 'Balaídos',
-      'Espanyol': 'RCDE Stadium',
-      'Mallorca': 'Visit Mallorca Estadi',
-      'Almería': 'Power Horse Stadium',
-      'Girona': 'Estadi Montilivi',
-      'Rayo Vallecano': 'Estadio del Rayo Vallecano',
-      'Osasuna': 'El Sadar',
-      'Real Valladolid': 'Estadio José Zorrilla',
-      'Cádiz': 'Nuevo Mirandilla',
-      'Las Palmas': 'Estadio Gran Canaria',
-      
+      "Real Madrid": "Santiago Bernabéu",
+      Barcelona: "Camp Nou",
+      "Atlético Madrid": "Wanda Metropolitano",
+      "Real Sociedad": "Anoeta Stadium",
+      Villarreal: "Estadio de la Cerámica",
+      "Real Betis": "Benito Villamarín",
+      "Athletic Club": "San Mamés",
+      Valencia: "Mestalla",
+      Sevilla: "Ramón Sánchez Pizjuán",
+      Getafe: "Coliseum Alfonso Pérez",
+      "Celta Vigo": "Balaídos",
+      Espanyol: "RCDE Stadium",
+      Mallorca: "Visit Mallorca Estadi",
+      Almería: "Power Horse Stadium",
+      Girona: "Estadi Montilivi",
+      "Rayo Vallecano": "Estadio del Rayo Vallecano",
+      Osasuna: "El Sadar",
+      "Real Valladolid": "Estadio José Zorrilla",
+      Cádiz: "Nuevo Mirandilla",
+      "Las Palmas": "Estadio Gran Canaria",
+
       // Bundesliga
-      'Bayern Munich': 'Allianz Arena',
-      'Borussia Dortmund': 'Signal Iduna Park',
-      'RB Leipzig': 'Red Bull Arena',
-      'Bayer Leverkusen': 'BayArena',
-      'Eintracht Frankfurt': 'Deutsche Bank Park',
-      'VfL Wolfsburg': 'Volkswagen Arena',
-      'Borussia Mönchengladbach': 'Borussia-Park',
-      'Union Berlin': 'Stadion An der Alten Försterei',
-      'VfB Stuttgart': 'Mercedes-Benz Arena',
-      'Werder Bremen': 'Weserstadion',
-      'Hoffenheim': 'PreZero Arena',
-      'FC Augsburg': 'WWK Arena',
-      'Mainz 05': 'MEWA ARENA',
-      'Freiburg': 'Europa-Park Stadion',
-      'FC Cologne': 'RheinEnergieStadion',
-      'Bochum': 'Vonovia Ruhrstadion',
-      'Darmstadt 98': 'Merck-Stadion am Böllenfalltor',
-      'Heidenheim': 'Voith-Arena',
-      'Holstein Kiel': 'Holstein-Stadion',
-      
+      "Bayern Munich": "Allianz Arena",
+      "Borussia Dortmund": "Signal Iduna Park",
+      "RB Leipzig": "Red Bull Arena",
+      "Bayer Leverkusen": "BayArena",
+      "Eintracht Frankfurt": "Deutsche Bank Park",
+      "VfL Wolfsburg": "Volkswagen Arena",
+      "Borussia Mönchengladbach": "Borussia-Park",
+      "Union Berlin": "Stadion An der Alten Försterei",
+      "VfB Stuttgart": "Mercedes-Benz Arena",
+      "Werder Bremen": "Weserstadion",
+      Hoffenheim: "PreZero Arena",
+      "FC Augsburg": "WWK Arena",
+      "Mainz 05": "MEWA ARENA",
+      Freiburg: "Europa-Park Stadion",
+      "FC Cologne": "RheinEnergieStadion",
+      Bochum: "Vonovia Ruhrstadion",
+      "Darmstadt 98": "Merck-Stadion am Böllenfalltor",
+      Heidenheim: "Voith-Arena",
+      "Holstein Kiel": "Holstein-Stadion",
+
       // Serie A
-      'Juventus': 'Allianz Stadium',
-      'Inter Milan': 'San Siro',
-      'AC Milan': 'San Siro',
-      'Napoli': 'Stadio Diego Armando Maradona',
-      'AS Roma': 'Stadio Olimpico',
-      'Lazio': 'Stadio Olimpico',
-      'Atalanta': 'Gewiss Stadium',
-      'Fiorentina': 'Stadio Artemio Franchi',
-      'Bologna': "Stadio Renato Dall'Ara",
-      'Torino': 'Stadio Olimpico Grande Torino',
-      'Monza': 'U-Power Stadium',
-      'Udinese': 'Dacia Arena',
-      'Sassuolo': 'MAPEI Stadium – Città del Tricolore',
-      'Empoli': 'Stadio Carlo Castellani',
-      'Hellas Verona': 'Stadio Marcantonio Bentegodi',
-      'Lecce': 'Stadio Comunale',
-      'Frosinone': 'Stadio Benito Stirpe',
-      'Genoa': 'Stadio Comunale Luigi Ferraris',
-      'Cagliari': 'Unipol Domus',
-      'Salernitana': 'Stadio Arechi',
-      
+      Juventus: "Allianz Stadium",
+      "Inter Milan": "San Siro",
+      "AC Milan": "San Siro",
+      Napoli: "Stadio Diego Armando Maradona",
+      "AS Roma": "Stadio Olimpico",
+      Lazio: "Stadio Olimpico",
+      Atalanta: "Gewiss Stadium",
+      Fiorentina: "Stadio Artemio Franchi",
+      Bologna: "Stadio Renato Dall'Ara",
+      Torino: "Stadio Olimpico Grande Torino",
+      Monza: "U-Power Stadium",
+      Udinese: "Dacia Arena",
+      Sassuolo: "MAPEI Stadium – Città del Tricolore",
+      Empoli: "Stadio Carlo Castellani",
+      "Hellas Verona": "Stadio Marcantonio Bentegodi",
+      Lecce: "Stadio Comunale",
+      Frosinone: "Stadio Benito Stirpe",
+      Genoa: "Stadio Comunale Luigi Ferraris",
+      Cagliari: "Unipol Domus",
+      Salernitana: "Stadio Arechi",
+
       // Ligue 1
-      'Paris Saint-Germain': 'Parc des Princes',
-      'Olympique Marseille': 'Orange Vélodrome',
-      'AS Monaco': 'Stade Louis II',
-      'Olympique Lyon': 'Groupama Stadium',
-      'LOSC Lille': 'Stade Pierre-Mauroy',
-      'Stade Rennais': 'Roazhon Park',
-      'RC Lens': 'Stade Bollaert-Delelis',
-      'OGC Nice': 'Allianz Riviera',
-      'AS Saint-Étienne': 'Stade Geoffroy-Guichard',
-      'Montpellier': 'Stade de la Mosson',
-      'Toulouse': 'Stadium Municipal',
-      'Reims': 'Stade Auguste-Delaune',
-      'Strasbourg': 'Stade de la Meinau',
-      'Nantes': 'Stade de la Beaujoire',
-      'Brest': 'Stade Francis-Le Blé',
-      'Auxerre': 'Stade de l’Abbé-Deschamps',
-      'Clermont Foot': 'Stade Gabriel Montpied',
-      'Le Havre': 'Stade Océane',
-      'Metz': 'Stade Saint-Symphorien',
-      'Lorient': 'Stade du Moustoir',
+      "Paris Saint-Germain": "Parc des Princes",
+      "Olympique Marseille": "Orange Vélodrome",
+      "AS Monaco": "Stade Louis II",
+      "Olympique Lyon": "Groupama Stadium",
+      "LOSC Lille": "Stade Pierre-Mauroy",
+      "Stade Rennais": "Roazhon Park",
+      "RC Lens": "Stade Bollaert-Delelis",
+      "OGC Nice": "Allianz Riviera",
+      "AS Saint-Étienne": "Stade Geoffroy-Guichard",
+      Montpellier: "Stade de la Mosson",
+      Toulouse: "Stadium Municipal",
+      Reims: "Stade Auguste-Delaune",
+      Strasbourg: "Stade de la Meinau",
+      Nantes: "Stade de la Beaujoire",
+      Brest: "Stade Francis-Le Blé",
+      Auxerre: "Stade de l’Abbé-Deschamps",
+      "Clermont Foot": "Stade Gabriel Montpied",
+      "Le Havre": "Stade Océane",
+      Metz: "Stade Saint-Symphorien",
+      Lorient: "Stade du Moustoir",
     };
-    
+
     // Prepare updates for teams without venues
     const updates = teams
-      .filter(team => !team.venue && venueMappings[team.name])
-      .map(team => ({
-        id: team.team_id,
-        venue: venueMappings[team.name]
+      .filter((team) => !team.venue && venueMappings[team.name])
+      .map((team) => ({
+        id: team.id,
+        venue: venueMappings[team.name],
       }));
-    
+
     if (updates.length === 0) {
       toast.info("No teams found that need venue auto-population");
       return;
     }
-    
+
     try {
       const response = await teamService.batchUpdateTeams(updates);
       if (response.success) {
@@ -288,7 +306,7 @@ export default function Teams() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingTeam) {
-      updateMutation.mutate({ id: editingTeam.team_id, data: formData });
+      updateMutation.mutate({ id: editingTeam.id, data: formData });
     } else {
       createMutation.mutate(formData);
     }
@@ -301,7 +319,7 @@ export default function Teams() {
       short_code: team.short_code,
       logo_url: team.logo_url || "",
       country: team.country,
-      team_type: team.team_type || "club",
+      type: team.type || "club",
       league_id: team.league_id || undefined,
       venue: team.venue || "",
     });
@@ -311,7 +329,15 @@ export default function Teams() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingTeam(null);
-    setFormData({ name: "", short_code: "", logo_url: "", country: "", team_type: "club", league_id: undefined, venue: "" });
+    setFormData({
+      name: "",
+      short_code: "",
+      logo_url: "",
+      country: "",
+      type: "club",
+      league_id: undefined,
+      venue: "",
+    });
   };
 
   // Filter teams by league and venue
@@ -320,10 +346,10 @@ export default function Teams() {
     if (filterLeagueId === "all") return true;
     if (filterLeagueId === "none") return !team.league_id;
     if (team.league_id !== parseInt(filterLeagueId)) return false;
-    
+
     // Venue filter
-    if (showOnlyMissingVenues) return !team.venue || team.venue.trim() === '';
-    
+    if (showOnlyMissingVenues) return !team.venue || team.venue.trim() === "";
+
     return true;
   });
 
@@ -333,10 +359,11 @@ export default function Teams() {
         <div>
           <h1 className="text-3xl font-bold">Teams</h1>
           <p className="text-muted-foreground">
-            Manage football teams 
+            Manage football teams
             {teams && (
               <span>
-                ({teams.filter(t => !t.venue || t.venue.trim() === '').length} missing venues)
+                ({teams.filter((t) => !t.venue || t.venue.trim() === "").length}{" "}
+                missing venues)
               </span>
             )}
           </p>
@@ -350,30 +377,36 @@ export default function Teams() {
               <SelectItem value="all">All Teams</SelectItem>
               <SelectItem value="none">No League</SelectItem>
               {leagues?.map((league) => (
-                <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                <SelectItem key={league.id} value={league.id!.toString()}>
                   {league.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           {/* Filter toggle for teams without venues */}
-          <Button 
+          <Button
             variant={showOnlyMissingVenues ? "default" : "outline"}
             onClick={() => setShowOnlyMissingVenues(!showOnlyMissingVenues)}
           >
             {showOnlyMissingVenues ? "Show All" : "Missing Venues"}
           </Button>
-          
+
           {bulkEditMode ? (
             <>
-              <Button variant="outline" onClick={() => {
-                setBulkEditMode(false);
-                setBulkVenues({});
-              }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBulkEditMode(false);
+                  setBulkVenues({});
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={() => bulkUpdateMutation.mutate()} disabled={bulkUpdateMutation.isPending}>
+              <Button
+                onClick={() => bulkUpdateMutation.mutate()}
+                disabled={bulkUpdateMutation.isPending}
+              >
                 {bulkUpdateMutation.isPending ? "Saving..." : "Save All"}
               </Button>
             </>
@@ -417,7 +450,10 @@ export default function Teams() {
                         id="short_code"
                         value={formData.short_code}
                         onChange={(e) =>
-                          setFormData({ ...formData, short_code: e.target.value })
+                          setFormData({
+                            ...formData,
+                            short_code: e.target.value,
+                          })
                         }
                         placeholder="e.g., ARS"
                         maxLength={100}
@@ -448,12 +484,15 @@ export default function Teams() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="team_type">Team Type</Label>
+                      <Label htmlFor="type">Team Type</Label>
                       <select
-                        id="team_type"
-                        value={formData.team_type}
+                        id="type"
+                        value={formData.type}
                         onChange={(e) =>
-                          setFormData({ ...formData, team_type: e.target.value as 'club' | 'country' })
+                          setFormData({
+                            ...formData,
+                            type: e.target.value as "club" | "country",
+                          })
                         }
                         className="w-full p-2 border border-input rounded-md bg-background"
                       >
@@ -466,7 +505,11 @@ export default function Teams() {
                       <Select
                         value={formData.league_id?.toString() || "none"}
                         onValueChange={(value) =>
-                          setFormData({ ...formData, league_id: value === "none" ? undefined : parseInt(value) })
+                          setFormData({
+                            ...formData,
+                            league_id:
+                              value === "none" ? undefined : parseInt(value),
+                          })
                         }
                       >
                         <SelectTrigger>
@@ -475,7 +518,10 @@ export default function Teams() {
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
                           {leagues?.map((league) => (
-                            <SelectItem key={league.league_id} value={league.league_id!.toString()}>
+                            <SelectItem
+                              key={league.id}
+                              value={league.id!.toString()}
+                            >
                               {league.name}
                             </SelectItem>
                           ))}
@@ -542,19 +588,27 @@ export default function Teams() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={bulkEditMode ? 9 : 8} className="text-center">
+                <TableCell
+                  colSpan={bulkEditMode ? 9 : 8}
+                  className="text-center"
+                >
                   Loading...
                 </TableCell>
               </TableRow>
             ) : filteredTeams?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={bulkEditMode ? 9 : 8} className="text-center text-muted-foreground">
-                  {filterLeagueId === "all" ? "No teams found. Create your first team!" : "No teams found for this filter."}
+                <TableCell
+                  colSpan={bulkEditMode ? 9 : 8}
+                  className="text-center text-muted-foreground"
+                >
+                  {filterLeagueId === "all"
+                    ? "No teams found. Create your first team!"
+                    : "No teams found for this filter."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredTeams?.map((team, index) => (
-                <TableRow key={team.team_id}>
+                <TableRow key={team.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     {team.logo_url ? (
@@ -574,24 +628,28 @@ export default function Teams() {
                   <TableCell>{team.country}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {team.team_type === 'country' ? 'National' : 'Club'}
+                      {team.type === "country" ? "National" : "Club"}
                     </span>
                   </TableCell>
                   <TableCell>
                     {team.venue ? (
                       <span className="text-sm">{team.venue}</span>
                     ) : (
-                      <span className="text-sm text-muted-foreground italic">No venue</span>
+                      <span className="text-sm text-muted-foreground italic">
+                        No venue
+                      </span>
                     )}
                   </TableCell>
                   {bulkEditMode && (
                     <TableCell>
                       <Input
-                        value={bulkVenues[team.team_id] || team.venue || ""}
-                        onChange={(e) => setBulkVenues(prev => ({
-                          ...prev,
-                          [team.team_id]: e.target.value
-                        }))}
+                        value={bulkVenues[team.id] || team.venue || ""}
+                        onChange={(e) =>
+                          setBulkVenues((prev) => ({
+                            ...prev,
+                            [team.id]: e.target.value,
+                          }))
+                        }
                         placeholder="Enter venue"
                       />
                     </TableCell>
@@ -602,10 +660,12 @@ export default function Teams() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setBulkVenues(prev => ({
-                            ...prev,
-                            [team.team_id]: ""
-                          }))}
+                          onClick={() =>
+                            setBulkVenues((prev) => ({
+                              ...prev,
+                              [team.id]: "",
+                            }))
+                          }
                         >
                           Clear
                         </Button>
@@ -622,7 +682,7 @@ export default function Teams() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => deleteMutation.mutate(team.team_id)}
+                          onClick={() => deleteMutation.mutate(team.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
