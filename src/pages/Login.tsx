@@ -16,8 +16,6 @@ import { toast } from "sonner";
 import { postLogin } from "@/apiConfig/auth.api";
 import { getErrMsg } from "@/lib/utils";
 
-
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
