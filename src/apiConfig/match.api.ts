@@ -33,6 +33,7 @@ export const getScoreOptionsPredictions = async (matchId: number) => {
   return res?.data;
 };
 
+
 export const postScoreOption = async (matchId: number, payload: any) => {
   const res = await apiConfig.post(
     `/matches/${matchId}/score-options/key`,

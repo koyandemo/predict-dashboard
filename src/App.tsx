@@ -14,10 +14,11 @@ import Analytics from "./pages/Analytics";
 import MatchDetail from "./pages/MatchDetail";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
-import UserAvatarDemo from './pages/UserAvatarDemo';
-import Login from './pages/Login';
-import NotFound from './pages/NotFound';
-import Contacts from './pages/Contacts';
+import UserAvatarDemo from "./pages/UserAvatarDemo";
+import Login from "./pages/Login";
+import NotFound from "./pages/NotFound";
+import Contacts from "./pages/Contacts";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,13 +40,16 @@ const App = () => (
           <Sonner />
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                <Index />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Index />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/leagues"
               element={
@@ -106,31 +110,31 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route 
-              path="/user/:userId" 
+            <Route
+              path="/user/:userId"
               element={
                 <ProtectedRoute>
                   <UserDetail />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/match/:matchId" 
+            <Route
+              path="/match/:matchId"
               element={
                 <ProtectedRoute>
                   <MatchDetail />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/user-avatar-demo" 
+            <Route
+              path="/user-avatar-demo"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
                     <UserAvatarDemo />
                   </DashboardLayout>
                 </ProtectedRoute>
-              } 
+              }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

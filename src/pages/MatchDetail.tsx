@@ -37,6 +37,7 @@ import {
   postScoreOption,
 } from "@/apiConfig/match.api";
 import { formatDate } from "date-fns";
+import { UserT } from "@/types/user.type";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -133,7 +134,6 @@ export default function MatchDetail() {
     queryKey: ["scorePredictions", matchIdNum],
     queryFn: async () => {
       const response = await getScoreOptionsPredictions(matchIdNum);
-      console.log(response.data?.predictions);
       if (!response.success) throw new Error(response.error);
       return response.data?.predictions || [];
     },
@@ -993,7 +993,7 @@ export default function MatchDetail() {
                     key={comment.comment_id}
                     className="p-4 rounded-lg bg-card border flex gap-3"
                   >
-                    <UserAvatar user={mockUser} size="sm" />
+                    <UserAvatar user={mockUser as UserT} size="sm" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{userName}</span>

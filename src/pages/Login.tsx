@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { postLogin } from "@/apiConfig/auth.api";
 import { getErrMsg } from "@/lib/utils";
 
+
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,6 +55,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

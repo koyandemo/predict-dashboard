@@ -4,7 +4,7 @@ export interface UserT {
     email: string;
     provider: "email"|"google"|string;
     password?: string;
-    role: "ADMIN" | "USER";
+    role: "ADMIN" | "USER" |"SEED";
     avatar_url?: string | "";
     avatar_bg_color?: string | "";
     created_at: Date;

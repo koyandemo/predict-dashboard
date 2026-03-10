@@ -1,9 +1,10 @@
 import React from 'react';
 import { User } from '@/interfaces';
 import { getUserInitials, getBackgroundColor } from '@/lib/avatarUtils';
+import { UserT } from '@/types/user.type';
 
 interface UserAvatarProps {
-  user: User;
+  user: UserT;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -26,7 +27,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   const backgroundColor = getBackgroundColor(user);
 
   // Check user type: if not seed, show avatar_url; otherwise show colored initials
-  if (user.type !== 'seed') {
+  if (user.role !== 'SEED') {
     // For non-seed users, show avatar_url if available
     if (user.avatar_url) {
       return (

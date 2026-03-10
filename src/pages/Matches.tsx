@@ -304,7 +304,6 @@ export default function Matches() {
 
   // Matches are already filtered by the API
   const filteredMatches = matches;
-  console.log(matches, "330");
 
   return (
     <div className="space-y-6">
