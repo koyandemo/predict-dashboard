@@ -22,7 +22,11 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
-import { LeagueT } from "@/types/league.type";
+import {
+  LeagueFormDataT,
+  LeagueT,
+  UpdateSortOrderResultT,
+} from "@/types/league.type";
 import {
   deleteLeague,
   getAllLeagues,
@@ -30,48 +34,17 @@ import {
   putLeague,
 } from "@/apiConfig/league.api";
 
-interface LeagueFormData {
-  name: string;
-  country: string;
-  logo_url: string;
-  sort_order: number;
-}
-
-interface UpdateSortOrderResult {
-  partialSuccess?: boolean;
-  failedCount?: number;
-  [key: string]: any;
-}
-
 export default function Leagues() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLeague, setEditingLeague] = useState<LeagueT | null>(null);
-  const [formData, setFormData] = useState<LeagueFormData>({
+  const [formData, setFormData] = useState<LeagueFormDataT>({
     name: "",
     country: "",
     logo_url: "",
     sort_order: 0,
   });
   const [dragging, setDragging] = useState(false);
-
-  const onDragEnd = (result: DropResult) => {
-    setDragging(false);
-
-    // Dropped outside the list
-    if (!result.destination) {
-      return;
-    }
-
-    // Reorder the leagues
-    const items = Array.from(leagues || []);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    // Update sort orders
-    //@ts-ignore
-    updateSortOrderMutation.mutate(items);
-  };
 
   const {
     data: leagues,
@@ -91,7 +64,7 @@ export default function Leagues() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Omit<LeagueFormData, "sort_order">) => {
+    mutationFn: async (data: Omit<LeagueFormDataT, "sort_order">) => {
       const response = await postLeague(data as LeagueT);
       if (!response.success) throw new Error(response.error);
       return response.data;
@@ -113,7 +86,7 @@ export default function Leagues() {
       data,
     }: {
       id: number;
-      data: Omit<LeagueFormData, "sort_order">;
+      data: Omit<LeagueFormDataT, "sort_order">;
     }) => {
       const response = await putLeague(id, data as LeagueT);
       if (!response.success) throw new Error(response.error);
@@ -145,7 +118,21 @@ export default function Leagues() {
     },
   });
 
-  // Update league sort orders
+  const onDragEnd = (result: DropResult) => {
+    setDragging(false);
+
+    if (!result.destination) {
+      return;
+    }
+
+    const items = Array.from(leagues || []);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    //@ts-ignore
+    updateSortOrderMutation.mutate(items);
+  };
+
   const updateSortOrderMutation = useMutation({
     mutationFn: async (updatedLeagues: LeagueT[]) => {
       const promises = updatedLeagues.map(async (league, index) => {
@@ -158,7 +145,6 @@ export default function Leagues() {
           } as LeagueT);
           return result;
         } catch (error: any) {
-          // If it's a column error, try without sort_order
           if (
             error.message &&
             (error.message.includes("sort_order") ||
@@ -176,20 +162,16 @@ export default function Leagues() {
             }
           }
 
-          // Return a failed result structure
           return { success: false, error: error.message };
         }
       });
 
       const results = await Promise.all(promises);
 
-      // Check if all updates were successful
-      // Handle both successful responses and potential errors
       const failedUpdates = results.filter(
         (result) => !result || result.success === false || !!result.error
       );
       if (failedUpdates.length > 0) {
-        // Even if some updates failed, we'll still show a partial success message
         if (failedUpdates.length < results.length) {
           return { partialSuccess: true, failedCount: failedUpdates.length };
         }
@@ -198,12 +180,12 @@ export default function Leagues() {
 
       return results;
     },
-    onSuccess: (data: UpdateSortOrderResult | any[]) => {
+    onSuccess: (data: UpdateSortOrderResultT | any[]) => {
       queryClient.invalidateQueries({ queryKey: ["leagues"] });
       if (data && typeof data === "object" && "partialSuccess" in data) {
         toast.success(
           `League order updated with ${
-            (data as UpdateSortOrderResult).failedCount
+            (data as UpdateSortOrderResultT).failedCount
           } failures`
         );
       } else {

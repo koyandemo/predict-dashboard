@@ -1,16 +1,28 @@
+export interface LeagueFormDataT {
+  name: string;
+  country: string;
+  logo_url: string;
+  sort_order: number;
+}
+
+export interface UpdateSortOrderResultT {
+  partialSuccess?: boolean;
+  failedCount?: number;
+  [key: string]: any;
+}
+
 export interface LeagueT {
-    id:number;
-    name: string;
-    country: string;
-    slug: string;
-    logo_url?: string;
-    sort_order?: number;
-  }
-  
-  
-  export interface LeagueResponseT {
-    success: boolean;
-    message: string;
-    data?: any;
-    error?: string;
-  }
+  id: number;
+  name: string;
+  country: string;
+  slug: string;
+  logo_url?: string;
+  sort_order?: number;
+}
+
+export interface LeagueResponseT {
+  success: boolean;
+  message: string;
+  data?: any;
+  error?: string;
+}

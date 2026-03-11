@@ -40,7 +40,7 @@ import { TeamT } from "@/types/team.type";
 export default function Teams() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [editingTeam, setEditingTeam] = useState<TeamT | null>(null);
   const [filterLeagueId, setFilterLeagueId] = useState<string>("all");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [showOnlyMissingVenues, setShowOnlyMissingVenues] = useState(false);
@@ -75,7 +75,6 @@ export default function Teams() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // const response = await teamService.createTeam(data);
       const response = await postTeam(data as TeamT);
       if (!response.success) throw new Error(response.error);
       return response.data;
@@ -165,7 +164,6 @@ export default function Teams() {
   const autoPopulateVenues = async () => {
     if (!teams) return;
 
-    // Known venue mappings
     const venueMappings: Record<string, string> = {
       // Premier League
       Arsenal: "Emirates Stadium",
@@ -384,7 +382,6 @@ export default function Teams() {
             </SelectContent>
           </Select>
 
-          {/* Filter toggle for teams without venues */}
           <Button
             variant={showOnlyMissingVenues ? "default" : "outline"}
             onClick={() => setShowOnlyMissingVenues(!showOnlyMissingVenues)}

@@ -67,7 +67,7 @@ export default function Matches() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkImportDialogOpen, setIsBulkImportDialogOpen] = useState(false);
-  const [editingMatch, setEditingMatch] = useState<MatchT>(null);
+  const [editingMatch, setEditingMatch] = useState<MatchT | null>(null);
   const [homeTeamOpen, setHomeTeamOpen] = useState(false);
   const [awayTeamOpen, setAwayTeamOpen] = useState(false);
   const [filterLeagueId, setFilterLeagueId] = useState("all");
@@ -154,7 +154,6 @@ export default function Matches() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      // const response = await matchService.updateMatch(id, data);
       const response = await putMatch(id, data);
       if (!response.success) throw new Error(response.error);
       return response.data;
@@ -172,7 +171,6 @@ export default function Matches() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await deleteMatch(id);
-      // const response = await matchService.deleteMatch(id);
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
@@ -302,7 +300,6 @@ export default function Matches() {
     }
   };
 
-  // Matches are already filtered by the API
   const filteredMatches = matches;
 
   return (

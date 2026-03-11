@@ -1,18 +1,9 @@
+import { UserT } from "@/types/user.type";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface User {
-  user_id?: number;
-  name: string;
-  email: string;
-  provider: 'google' | 'facebook' | 'twitter' | 'email';
-  type: 'user' | 'admin' | 'seed';
-  created_at?: string;
-  updated_at?: string;
-}
-
 interface AuthContextType {
-  user: User | null;
-  login: (token: string, userData: User) => void;
+  user: UserT | null;
+  login: (token: string, userData: UserT) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -21,10 +12,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserT | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem("authToken");
     const userData = localStorage.getItem("currentUser");
     
@@ -38,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (token: string, userData: User) => {
+  const login = (token: string, userData: UserT) => {
     localStorage.setItem("authToken", token);
     localStorage.setItem("currentUser", JSON.stringify(userData));
     setUser(userData);
@@ -51,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isAuthenticated = !!user;
-  const isAdmin = user?.type === 'admin';
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAuthenticated, isAdmin }}>
