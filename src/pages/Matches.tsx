@@ -302,6 +302,8 @@ export default function Matches() {
 
   const filteredMatches = matches;
 
+  console.log(filteredMatches);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -751,6 +753,7 @@ export default function Matches() {
         <Table>
           <TableHeader>
             <TableRow>
+            <TableHead>Id</TableHead>
               <TableHead>League</TableHead>
               <TableHead>Home Team</TableHead>
               <TableHead>Away Team</TableHead>
@@ -784,16 +787,20 @@ export default function Matches() {
               filteredMatches?.map((match) => (
                 <TableRow key={match.id}>
                   <TableCell>
-                    {leagues?.find((league) => league.id === match.id)?.name ||
-                      "Unknown"}
+                      {match.id}
+                  </TableCell>
+                  <TableCell>
+                      {match.league ? match.league.name : "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find((team) => team.id === match.home_team.id)
-                      ?.name || "Unknown"}
+                    {match.home_team_name}
+                    {/* {teams?.find((team) => team.id === match.home_team.id)
+                      ?.name || "Unknown"} */}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {teams?.find((team) => team.id === match.away_team.id)
-                      ?.name || "Unknown"}
+                    {match.away_team_name}
+                    {/* {teams?.find((team) => team.id === match.away_team.id)
+                      ?.name || "Unknown"} */}
                   </TableCell>
                   <TableCell>
                     {format(new Date(match.kickoff), "MMM dd, yyyy")}

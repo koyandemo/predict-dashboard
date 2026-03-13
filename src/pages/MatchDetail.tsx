@@ -102,6 +102,7 @@ export default function MatchDetail() {
     },
   });
 
+
   //no need
   const {
     data: voteCounts,
@@ -472,12 +473,12 @@ export default function MatchDetail() {
                   />
                 ) : (
                   <div className="text-2xl font-bold">
-                    {match.home_team?.short_code}
+                    {match.home_team_name}
                   </div>
                 )}
               </div>
               <div className="font-semibold text-lg">
-                {match.home_team?.name}
+                {match.home_team_name}
               </div>
               <div className="text-sm text-muted-foreground">Home</div>
             </div>
@@ -494,12 +495,12 @@ export default function MatchDetail() {
                   />
                 ) : (
                   <div className="text-2xl font-bold">
-                    {match.away_team?.short_code}
+                    {match.away_team_name}
                   </div>
                 )}
               </div>
               <div className="font-semibold text-lg">
-                {match.away_team?.name}
+                {match.away_team_name}
               </div>
               <div className="text-sm text-muted-foreground">Away</div>
             </div>
@@ -532,7 +533,7 @@ export default function MatchDetail() {
               onClick={() => openVoteDialog("home")}
             >
               <div className="font-bold text-green-500">
-                {match.home_team?.short_code}
+                {match.home_team_name}
               </div>
               <div className="text-2xl font-bold mt-2">{homePercent}%</div>
               <div className="text-sm text-muted-foreground">
@@ -564,7 +565,7 @@ export default function MatchDetail() {
               onClick={() => openVoteDialog("away")}
             >
               <div className="font-bold text-blue-500">
-                {match.away_team?.short_code}
+                {match.away_team_name}
               </div>
               <div className="text-2xl font-bold mt-2">{awayPercent}%</div>
               <div className="text-sm text-muted-foreground">
@@ -582,10 +583,10 @@ export default function MatchDetail() {
               <DialogHeader>
                 <DialogTitle>
                   {selectedOutcome === "home" &&
-                    `Vote for ${match.home_team?.short_code}`}
+                    `Vote for ${match.home_team_name}`}
                   {selectedOutcome === "draw" && "Vote for Draw"}
                   {selectedOutcome === "away" &&
-                    `Vote for ${match.away_team?.short_code}`}
+                    `Vote for ${match.away_team_name}`}
                 </DialogTitle>
                 <DialogDescription>
                   Enter the total number of votes (will replace current votes)
@@ -656,9 +657,9 @@ export default function MatchDetail() {
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{match.home_team?.short_code}</span>
+                <span>{match.home_team_name}</span>
                 <span>Draw</span>
-                <span>{match.away_team?.short_code}</span>
+                <span>{match.away_team_name}</span>
               </div>
             </div>
           )}
@@ -701,7 +702,7 @@ export default function MatchDetail() {
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.home_team?.short_code}
+                      {match.home_team_name}
                     </div>
                     <Input
                       type="number"
@@ -717,7 +718,7 @@ export default function MatchDetail() {
                   <div className="text-3xl font-bold">-</div>
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.away_team?.short_code}
+                      {match.away_team_name}
                     </div>
                     <Input
                       type="number"
@@ -765,7 +766,7 @@ export default function MatchDetail() {
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.home_team?.short_code}
+                      {match.home_team_name}
                     </div>
                     <Input
                       type="number"
@@ -788,7 +789,7 @@ export default function MatchDetail() {
                   <div className="text-3xl font-bold">-</div>
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.away_team?.short_code}
+                      {match.away_team_name}
                     </div>
                     <Input
                       type="number"
@@ -872,7 +873,7 @@ export default function MatchDetail() {
                   </div>
                   <div className="flex items-center gap-2 font-mono">
                     <span className="font-bold">
-                      {match.home_team?.short_code}
+                      {match.home_team_name}
                     </span>
                     <span className="text-2xl font-bold">
                       {pred.home_score}
@@ -882,7 +883,7 @@ export default function MatchDetail() {
                       {pred.away_score}
                     </span>
                     <span className="font-bold">
-                      {match.away_team?.short_code}
+                      {match.away_team_name}
                     </span>
                   </div>
                   <div
