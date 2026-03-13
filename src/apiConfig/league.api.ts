@@ -2,7 +2,7 @@ import { LeagueT } from "@/types/league.type";
 import { apiConfig } from "./apiConfig";
 
 export const getAllLeagues = async () => {
-  const res = await apiConfig.get("/leagues");
+  const res = await apiConfig.get(`/leagues?published=${false}`);
   return res?.data;
 };
 
@@ -17,6 +17,6 @@ export const putLeague = async (id: number, data: LeagueT) => {
 };
 
 export const deleteLeague = async (id: number) => {
-    const res = await apiConfig.delete(`/leagues/${id}/key`);
-    return res?.data;
-}
+  const res = await apiConfig.delete(`/leagues/${id}/key`);
+  return res?.data;
+};

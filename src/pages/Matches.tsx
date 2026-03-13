@@ -51,7 +51,6 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import * as matchService from "@/services/matchService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllLeagues } from "@/apiConfig/league.api";
 import { getAllTeams } from "@/apiConfig/team.api";
@@ -62,17 +61,20 @@ import {
   getAllMatches,
 } from "@/apiConfig/match.api";
 import { MatchT } from "@/types/match.type";
+import { getAllSeasons } from "@/apiConfig/season.api";
+import { getAllGameWeeks } from "@/apiConfig/gameWeek.api";
 
 export default function Matches() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isBulkImportDialogOpen, setIsBulkImportDialogOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<MatchT | null>(null);
   const [homeTeamOpen, setHomeTeamOpen] = useState(false);
   const [awayTeamOpen, setAwayTeamOpen] = useState(false);
   const [filterLeagueId, setFilterLeagueId] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPublished, setFilterPublished] = useState("all");
+  const [filterSeasonId, setFilterSeasonId] = useState("1");
+  const [filterGameWeekId, setFilterGameWeekId] = useState("all");
   const [formData, setFormData] = useState({
     league_id: "",
     home_team_id: "",
@@ -95,11 +97,8 @@ export default function Matches() {
     published: false,
   });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isImporting, setIsImporting] = useState(false);
-
   const { data: matches, isLoading } = useQuery({
-    queryKey: ["matches", filterLeagueId, filterStatus, filterPublished],
+    queryKey: ["matches", filterLeagueId, filterStatus, filterPublished,filterSeasonId,filterGameWeekId],
     queryFn: async () => {
       const filters: any = {};
       if (filterLeagueId !== "all") {
@@ -111,6 +110,12 @@ export default function Matches() {
       if (filterPublished !== "all") {
         filters.published = filterPublished === "published";
       }
+      if(filterSeasonId !== "all"){
+        filters.season_id = parseInt(filterSeasonId);
+      }
+      if(filterGameWeekId !== "all"){
+        filters.gameweek_id = parseInt(filterGameWeekId);
+      }
       const response = await getAllMatches(filters);
       if (!response.success) throw new Error(response.error);
       return response.data?.data;
@@ -121,6 +126,24 @@ export default function Matches() {
     queryKey: ["leagues"],
     queryFn: async () => {
       const response = await getAllLeagues();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
+  });
+
+  const { data: seasons } = useQuery({
+    queryKey: ["seasons"],
+    queryFn: async () => {
+      const response = await getAllSeasons();
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
+  });
+
+  const { data: gameWeeks } = useQuery({
+    queryKey: ["gameWeeks"],
+    queryFn: async () => {
+      const response = await getAllGameWeeks();
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -138,7 +161,6 @@ export default function Matches() {
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await postMatch(data);
-      // const response = await matchService.createMatch(data);
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
@@ -179,31 +201,6 @@ export default function Matches() {
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to delete match");
-    },
-  });
-
-  const bulkImportMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const response = await matchService.bulkImportMatches(file);
-      if (!response.success)
-        throw new Error(response.error || "Failed to import matches");
-      return response;
-    },
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
-      setIsImporting(false);
-      setIsBulkImportDialogOpen(false);
-      if (response.data) {
-        toast.success(
-          `Bulk import completed. ${response.data.created} matches created, ${response.data.errors} errors.`
-        );
-      } else {
-        toast.success("Bulk import completed successfully");
-      }
-    },
-    onError: (error: any) => {
-      setIsImporting(false);
-      toast.error(error.message || "Failed to import matches");
     },
   });
 
@@ -285,24 +282,7 @@ export default function Matches() {
     });
   };
 
-  const handleBulkImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      setIsImporting(true);
-      bulkImportMutation.mutate(file);
-    }
-  };
-
-  const triggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   const filteredMatches = matches;
-
-  console.log(filteredMatches);
 
   return (
     <div className="space-y-6">
@@ -320,21 +300,6 @@ export default function Matches() {
               </Button>
             </DialogTrigger>
           </Dialog>
-          <Button
-            className="gap-2"
-            onClick={triggerFileInput}
-            disabled={isImporting}
-          >
-            <Upload className="h-4 w-4" />
-            {isImporting ? "Importing..." : "Bulk Import"}
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleBulkImport}
-            accept=".csv"
-            className="hidden"
-          />
         </div>
       </div>
 
@@ -351,6 +316,32 @@ export default function Matches() {
                 <SelectItem key={league.id} value={league.id!.toString()}>
                   {league.name}
                 </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[200px]">
+          <Select value={filterSeasonId} onValueChange={setFilterSeasonId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by Season" />
+            </SelectTrigger>
+            <SelectContent>
+            <SelectItem value="all">All Season</SelectItem>
+              {seasons?.map((season) => (
+                <SelectItem value={season.id+""} key={season.id}>{season.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[200px]">
+          <Select value={filterGameWeekId} onValueChange={setFilterGameWeekId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by Week" />
+            </SelectTrigger>
+            <SelectContent>
+            <SelectItem value="all">All GameWeek</SelectItem>
+              {gameWeeks?.map((gameWeek) => (
+                <SelectItem value={gameWeek.id}>{gameWeek.number}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -753,10 +744,13 @@ export default function Matches() {
         <Table>
           <TableHeader>
             <TableRow>
-            <TableHead>Id</TableHead>
+              <TableHead>Idx</TableHead>
+              <TableHead>Id</TableHead>
               <TableHead>League</TableHead>
               <TableHead>Home Team</TableHead>
               <TableHead>Away Team</TableHead>
+              {/* <TableHead>Season</TableHead> */}
+              {/* <TableHead>Game Week</TableHead> */}
               <TableHead>Date</TableHead>
               <TableHead>Timezone</TableHead>
               <TableHead>Status</TableHead>
@@ -784,23 +778,18 @@ export default function Matches() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMatches?.map((match) => (
+              filteredMatches?.map((match, index) => (
                 <TableRow key={match.id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{match.id}</TableCell>
                   <TableCell>
-                      {match.id}
-                  </TableCell>
-                  <TableCell>
-                      {match.league ? match.league.name : "Unknown"}
+                    {match.league ? match.league.name : "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
                     {match.home_team_name}
-                    {/* {teams?.find((team) => team.id === match.home_team.id)
-                      ?.name || "Unknown"} */}
                   </TableCell>
                   <TableCell className="font-medium">
                     {match.away_team_name}
-                    {/* {teams?.find((team) => team.id === match.away_team.id)
-                      ?.name || "Unknown"} */}
                   </TableCell>
                   <TableCell>
                     {format(new Date(match.kickoff), "MMM dd, yyyy")}
