@@ -685,7 +685,7 @@ export default function Matches() {
               </div>
             </div>
 
-            {formData.status === "finished" && (
+            {/* {formData.status === "LIVE" || formData.status === "FINISHED" && ( */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="home_score">Home Score</Label>
@@ -712,7 +712,7 @@ export default function Matches() {
                   />
                 </div>
               </div>
-            )}
+            {/* )} */}
             {editingMatch && (
               <div className="space-y-2">
                 <Label htmlFor="slug">Slug (auto-generated)</Label>
