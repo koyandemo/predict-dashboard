@@ -51,7 +51,7 @@ export default function Index() {
           <CardContent>
             <p>Hello, {user?.name || 'Admin'}!</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              You are logged in as {user?.type === 'admin' ? 'Administrator' : user?.type}.
+              You are logged in as {user?.role === 'ADMIN' ? 'Administrator' : user?.role}.
             </p>
           </CardContent>
         </Card>
