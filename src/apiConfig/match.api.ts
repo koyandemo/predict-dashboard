@@ -51,7 +51,7 @@ export const putScoreOption = async (matchId: number, payload: any) => {
 };
 
 export const getMatchVotes = async (matchId: number) => {
-  const res = await apiConfig.get(`/matches/${matchId}/admin-match-votes`);
+  const res = await apiConfig.get(`/matches/${matchId}/match-votes`);
   return res?.data;
 };
 

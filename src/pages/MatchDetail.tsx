@@ -122,8 +122,8 @@ export default function MatchDetail() {
           home_percentage: 0,
           draw_percentage: 0,
           away_percentage: 0,
-          user_votes: { home: 0, draw: 0, away: 0, total: 0 },
-          admin_votes: { home: 0, draw: 0, away: 0, total: 0 },
+          u_votes: { home: 0, draw: 0, away: 0, total: 0 },
+          uu_votes: { home: 0, draw: 0, away: 0, total: 0 },
         };
       }
       return response.data;
@@ -281,9 +281,9 @@ export default function MatchDetail() {
       return;
     }
 
-    const currentAdminHomeVotes = voteCounts?.admin_votes?.home ?? 0;
-    const currentAdminDrawVotes = voteCounts?.admin_votes?.draw ?? 0;
-    const currentAdminAwayVotes = voteCounts?.admin_votes?.away ?? 0;
+    const currentAdminHomeVotes = voteCounts?.uu_votes?.home ?? 0;
+    const currentAdminDrawVotes = voteCounts?.uu_votes.draw ?? 0;
+    const currentAdminAwayVotes = voteCounts?.uu_votes?.away ?? 0;
 
     let newHomeVotes = currentAdminHomeVotes;
     let newDrawVotes = currentAdminDrawVotes;
@@ -317,17 +317,17 @@ export default function MatchDetail() {
     setSelectedOutcome(outcome);
     const currentVotes =
       outcome === "home"
-        ? voteCounts?.admin_votes?.home ?? 0
+        ? voteCounts?.uu_votes?.home ?? 0
         : outcome === "draw"
-        ? voteCounts?.admin_votes?.draw ?? 0
-        : voteCounts?.admin_votes?.away ?? 0;
+        ? voteCounts?.uu_votes?.draw ?? 0
+        : voteCounts?.uu_votes?.away ?? 0;
     setVoteInput(currentVotes.toString());
     setIsVoteDialogOpen(true);
   };
 
   const openScoreVoteDialog = (prediction: any) => {
     setSelectedScorePrediction(prediction);
-    const currentAdminVotes = prediction.admin_votes || 0;
+    const currentAdminVotes = prediction.uu_votes || 0;
     setScoreVoteInput(currentAdminVotes.toString());
     setIsScoreVoteDialogOpen(true);
   };
@@ -597,10 +597,10 @@ export default function MatchDetail() {
                   <label className="text-sm font-medium">
                     Current admin votes:{" "}
                     {selectedOutcome === "home"
-                      ? (voteCounts?.admin_votes?.home ?? 0).toLocaleString()
+                      ? (voteCounts?.uu_votes?.home ?? 0).toLocaleString()
                       : selectedOutcome === "draw"
-                      ? (voteCounts?.admin_votes?.draw ?? 0).toLocaleString()
-                      : (voteCounts?.admin_votes?.away ?? 0).toLocaleString()}
+                      ? (voteCounts?.uu_votes?.draw ?? 0).toLocaleString()
+                      : (voteCounts?.uu_votes?.away ?? 0).toLocaleString()}
                   </label>
                   <Input
                     type="number"
@@ -813,7 +813,7 @@ export default function MatchDetail() {
                 <div>
                   <label className="text-sm font-medium">
                     Current Admin Votes:{" "}
-                    {selectedScorePrediction?.admin_votes?.toLocaleString() ||
+                    {selectedScorePrediction?.uu_votes?.toLocaleString() ||
                       0}
                   </label>
                   <Input
