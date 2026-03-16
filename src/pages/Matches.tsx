@@ -789,7 +789,7 @@ export default function Matches() {
                     {match.home_team_name}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {match.away_team_name}
+                    {match.away_team.name}
                   </TableCell>
                   <TableCell>
                     {format(new Date(match.kickoff), "MMM dd, yyyy")}

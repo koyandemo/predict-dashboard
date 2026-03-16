@@ -22,6 +22,7 @@ const menuItems = [
   { title: "Leagues", url: "/leagues", icon: Trophy },
   { title: "Teams", url: "/teams", icon: Users },
   { title: "Matches", url: "/matches", icon: Calendar },
+  { title: "Winner Votes", url: "/winner-votes", icon: Trophy },
   { title: "Users", url: "/users", icon: Users },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },

@@ -57,7 +57,7 @@ export const getMatchVotes = async (matchId: number) => {
 
 export const postAdminMatchVotes = async (matchId: number, payload: any) => {
   const res = await apiConfig.post(
-    `/matches/${matchId}/update-admin-match-votes`,
+    `/matches/${matchId}/update-admin-match-votes/key`,
     payload
   );
   return res?.data;
@@ -65,7 +65,7 @@ export const postAdminMatchVotes = async (matchId: number, payload: any) => {
 
 export const postAdminScorePredictions = async (matchId: number, payload: any) => {
   const res = await apiConfig.post(
-    `/matches/${matchId}/update-admin-score-predictions`,
+    `/matches/${matchId}/update-admin-score-predictions/key`,
     payload
   );
   return res?.data;

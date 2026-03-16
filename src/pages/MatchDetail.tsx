@@ -495,12 +495,12 @@ export default function MatchDetail() {
                   />
                 ) : (
                   <div className="text-2xl font-bold">
-                    {match.away_team_name}
+                    {match.away_team.name}
                   </div>
                 )}
               </div>
               <div className="font-semibold text-lg">
-                {match.away_team_name}
+                {match.away_team.name}
               </div>
               <div className="text-sm text-muted-foreground">Away</div>
             </div>
@@ -565,7 +565,7 @@ export default function MatchDetail() {
               onClick={() => openVoteDialog("away")}
             >
               <div className="font-bold text-blue-500">
-                {match.away_team_name}
+                {match.away_team.name}
               </div>
               <div className="text-2xl font-bold mt-2">{awayPercent}%</div>
               <div className="text-sm text-muted-foreground">
@@ -586,7 +586,7 @@ export default function MatchDetail() {
                     `Vote for ${match.home_team_name}`}
                   {selectedOutcome === "draw" && "Vote for Draw"}
                   {selectedOutcome === "away" &&
-                    `Vote for ${match.away_team_name}`}
+                    `Vote for ${match.away_team.name}`}
                 </DialogTitle>
                 <DialogDescription>
                   Enter the total number of votes (will replace current votes)
@@ -657,9 +657,9 @@ export default function MatchDetail() {
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{match.home_team_name}</span>
+                <span>{match.home_team.name}</span>
                 <span>Draw</span>
-                <span>{match.away_team_name}</span>
+                <span>{match.away_team.name}</span>
               </div>
             </div>
           )}
@@ -718,7 +718,7 @@ export default function MatchDetail() {
                   <div className="text-3xl font-bold">-</div>
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.away_team_name}
+                      {match.away_team.name}
                     </div>
                     <Input
                       type="number"
@@ -789,7 +789,7 @@ export default function MatchDetail() {
                   <div className="text-3xl font-bold">-</div>
                   <div className="text-center">
                     <div className="font-medium">
-                      {match.away_team_name}
+                      {match.away_team.name}
                     </div>
                     <Input
                       type="number"
@@ -883,7 +883,7 @@ export default function MatchDetail() {
                       {pred.away_score}
                     </span>
                     <span className="font-bold">
-                      {match.away_team_name}
+                      {match.away_team.name}
                     </span>
                   </div>
                   <div
@@ -994,7 +994,7 @@ export default function MatchDetail() {
                     key={comment.comment_id}
                     className="p-4 rounded-lg bg-card border flex gap-3"
                   >
-                    <UserAvatar user={mockUser as UserT} size="sm" />
+                    <UserAvatar user={mockUser as any} size="sm" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{userName}</span>

@@ -18,6 +18,7 @@ import UserAvatarDemo from "./pages/UserAvatarDemo";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Contacts from "./pages/Contacts";
+import WinnerVotes from "./pages/WinnerVotes";
 
 
 const queryClient = new QueryClient({
@@ -106,6 +107,16 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Contacts />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/winner-votes"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <WinnerVotes />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
