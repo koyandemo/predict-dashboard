@@ -50,7 +50,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, FIFA_CLUB_WORLD_CUP_LEAGUE_ID, FIFA_WORLD_CUP_SEASON_ID } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllLeagues } from "@/apiConfig/league.api";
 import { getAllTeams } from "@/apiConfig/team.api";
@@ -73,7 +73,7 @@ export default function Matches() {
   const [filterLeagueId, setFilterLeagueId] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPublished, setFilterPublished] = useState("all");
-  const [filterSeasonId, setFilterSeasonId] = useState("1");
+  const [filterSeasonId, setFilterSeasonId] = useState(FIFA_WORLD_CUP_SEASON_ID+"");
   const [filterGameWeekId, setFilterGameWeekId] = useState("all");
   const [formData, setFormData] = useState({
     league_id: "",
@@ -844,19 +844,19 @@ export default function Matches() {
                       <Button
                         variant="outline"
                         size="icon"
+                        onClick={() => handleEdit(match)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
                         onClick={() =>
                           window.open(`/match/${match.id}`, "_blank")
                         }
                         title="View public prediction page"
                       >
                         <ExternalLink className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleEdit(match)}
-                      >
-                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"

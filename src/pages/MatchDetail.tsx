@@ -1,77 +1,42 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Users, MessageSquare, Sparkles } from "lucide-react";
-import { useState, useEffect, Fragment } from "react";
-import { toast } from "sonner";
-import * as matchService from "@/services/matchService";
-import * as userService from "@/services/userService";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { generateAIComment } from "@/lib/aiHelper";
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { EmojiPicker } from "@/components/EmojiPicker";
-import UserAvatar from "@/components/shared/UserAvatar";
 import {
   getMatchById,
   getMatchVotes,
   getScoreOptionsPredictions,
-  postAdminMatchVotes,
-  postAdminScorePredictions,
-  postScoreOption,
 } from "@/apiConfig/match.api";
-import { formatDate } from "date-fns";
-import { UserT } from "@/types/user.type";
+import { UserRoleEnum } from "@/types/user.type";
+import { getAllUsers } from "@/apiConfig/user.api";
+import { getMatchComments } from "@/apiConfig/comment.api";
+import MatchHeader from "./_components/matchDetail/MatchHeader";
+import VotingPanel from "./_components/matchDetail/VotingPanel";
+import ScorePredictionCard from "./_components/matchDetail/ScorePredictionCard";
+import CommentsSection from "./_components/matchDetail/CommentsSection";
 
 export default function MatchDetail() {
   const { matchId } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const [userName, setUserName] = useState("");
-  const [commentText, setCommentText] = useState("");
-  const [customScore, setCustomScore] = useState({ home: "", away: "" });
-  const [isVoteDialogOpen, setIsVoteDialogOpen] = useState(false);
-  const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
-  const [voteInput, setVoteInput] = useState("");
-  const [selectedOutcome, setSelectedOutcome] = useState<
-    "home" | "draw" | "away" | null
-  >(null);
-  const [isScoreVoteDialogOpen, setIsScoreVoteDialogOpen] = useState(false);
-  const [selectedScorePrediction, setSelectedScorePrediction] =
-    useState<any>(null);
-  const [scoreVoteInput, setScoreVoteInput] = useState("");
   const [users, setUsers] = useState<any[]>([]);
 
   const matchIdNum = matchId ? parseInt(matchId) : 0;
 
-  //no need
   useEffect(() => {
     const fetchSeedUsers = async () => {
-      if (!isAuthenticated) {
-        return;
-      }
-
+      if (!isAuthenticated) return;
       try {
-        const response = await userService.getUsersByType("seed");
+        const response = await getAllUsers({
+          role: UserRoleEnum.SEED,
+          page: 1,
+          limit: 100,
+        });
         if (response.success && response.data) {
-          setUsers(response.data);
+          setUsers(response.data?.data);
         }
       } catch (error) {}
     };
@@ -83,7 +48,6 @@ export default function MatchDetail() {
     return () => clearTimeout(timer);
   }, [isAuthenticated, user]);
 
-  //no need
   const {
     data: match,
     isLoading: matchLoading,
@@ -91,19 +55,12 @@ export default function MatchDetail() {
   } = useQuery({
     queryKey: ["match", matchIdNum],
     queryFn: async () => {
-      try {
-        const response = await getMatchById(matchIdNum);
-
-        if (!response.success) throw new Error(response.error);
-        return response.data;
-      } catch (error) {
-        throw error;
-      }
+      const response = await getMatchById(matchIdNum);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
     },
   });
 
-
-  //no need
   const {
     data: voteCounts,
     isLoading: voteCountsLoading,
@@ -130,7 +87,6 @@ export default function MatchDetail() {
     },
   });
 
-  //no need
   const { data: scorePredictions } = useQuery({
     queryKey: ["scorePredictions", matchIdNum],
     queryFn: async () => {
@@ -140,239 +96,14 @@ export default function MatchDetail() {
     },
   });
 
-  //no need
-  const matchVoteMutation = useMutation({
-    mutationFn: async (voteData: {
-      home_votes: number;
-      draw_votes: number;
-      away_votes: number;
-    }) => {
-      const response = await postAdminMatchVotes(matchIdNum, voteData);
-      if (!response.success) throw new Error(response.error);
-      return response;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["match-votes", matchIdNum],
-      });
-      await queryClient.refetchQueries({
-        queryKey: ["match-votes", matchIdNum],
-      });
-      toast.success("Votes updated successfully!");
-      setVoteInput("");
-      setSelectedOutcome(null);
-      setIsVoteDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update vote counts");
-    },
-  });
-
-  //no need
-  const scoreMutation = useMutation({
-    mutationFn: async ({
-      home_score,
-      away_score,
-    }: {
-      home_score: number;
-      away_score: number;
-    }) => {
-      const response = await postScoreOption(matchIdNum, {
-        home_score,
-        away_score,
-      });
-      if (!response.success) throw new Error(response.error);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["scorePredictions", matchIdNum],
-      });
-      setCustomScore({ home: "", away: "" });
-      toast.success("Score prediction recorded!");
-      setIsScoreDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to record score prediction");
-    },
-  });
-
-  //need to setup api
-  const scoreVoteMutation = useMutation({
-    mutationFn: async ({
-      // score_pred_id,
-      home_score,
-      away_score,
-      vote_count,
-    }: {
-      // score_pred_id?: number;
-      home_score: number;
-      away_score: number;
-      vote_count: number;
-    }) => {
-      const response = await postAdminScorePredictions(matchIdNum, {
-        home_score,
-        away_score,
-        vote_count,
-      });
-
-      if (!response.success) throw new Error(response.error);
-      return response;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["scorePredictions", matchIdNum],
-      });
-      await queryClient.refetchQueries({
-        queryKey: ["scorePredictions", matchIdNum],
-      });
-      toast.success("Score prediction votes updated!");
-      setScoreVoteInput("");
-      setSelectedScorePrediction(null);
-      setIsScoreVoteDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update score prediction votes");
-    },
-  });
-
-  // need to setup ap
   const { data: comments } = useQuery({
     queryKey: ["comments", matchIdNum],
     queryFn: async () => {
-      const response = await matchService.getComments(matchIdNum);
+      const response = await getMatchComments(matchIdNum);
       if (!response.success) throw new Error(response.error);
-      return response.data || [];
+      return response.data?.data || [];
     },
   });
-
-  // need to setup ap
-  const commentMutation = useMutation({
-    mutationFn: async () => {
-      if (!userName.trim() || !commentText.trim()) {
-        throw new Error("Please fill in both name and comment");
-      }
-
-      const selectedUser = users.find((user: any) => user.name === userName);
-      const userId = selectedUser ? selectedUser.user_id : 1;
-
-      const response = await matchService.createComment(matchIdNum, {
-        user_id: userId,
-        comment_text: `${userName}: ${commentText}`,
-      });
-
-      if (!response.success) throw new Error(response.error);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", matchIdNum] });
-      setCommentText("");
-      toast.success("Comment posted!");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to post comment");
-    },
-  });
-
-  const handleVoteSubmit = () => {
-    if (!voteInput || !selectedOutcome) return;
-
-    const voteCount = parseInt(voteInput);
-    if (isNaN(voteCount) || voteCount < 0) {
-      toast.error("Please enter a valid vote count");
-      return;
-    }
-
-    const currentAdminHomeVotes = voteCounts?.uu_votes?.home ?? 0;
-    const currentAdminDrawVotes = voteCounts?.uu_votes.draw ?? 0;
-    const currentAdminAwayVotes = voteCounts?.uu_votes?.away ?? 0;
-
-    let newHomeVotes = currentAdminHomeVotes;
-    let newDrawVotes = currentAdminDrawVotes;
-    let newAwayVotes = currentAdminAwayVotes;
-
-    if (selectedOutcome === "home") {
-      newHomeVotes = voteCount;
-    } else if (selectedOutcome === "draw") {
-      newDrawVotes = voteCount;
-    } else {
-      newAwayVotes = voteCount;
-    }
-
-    matchVoteMutation.mutate({
-      home_votes: newHomeVotes,
-      draw_votes: newDrawVotes,
-      away_votes: newAwayVotes,
-    });
-  };
-
-  const handleScoreSubmit = () => {
-    if (customScore.home && customScore.away) {
-      scoreMutation.mutate({
-        home_score: parseInt(customScore.home),
-        away_score: parseInt(customScore.away),
-      });
-    }
-  };
-
-  const openVoteDialog = (outcome: "home" | "draw" | "away") => {
-    setSelectedOutcome(outcome);
-    const currentVotes =
-      outcome === "home"
-        ? voteCounts?.uu_votes?.home ?? 0
-        : outcome === "draw"
-        ? voteCounts?.uu_votes?.draw ?? 0
-        : voteCounts?.uu_votes?.away ?? 0;
-    setVoteInput(currentVotes.toString());
-    setIsVoteDialogOpen(true);
-  };
-
-  const openScoreVoteDialog = (prediction: any) => {
-    setSelectedScorePrediction(prediction);
-    const currentAdminVotes = prediction.uu_votes || 0;
-    setScoreVoteInput(currentAdminVotes.toString());
-    setIsScoreVoteDialogOpen(true);
-  };
-
-  const handleScoreVoteSubmit = () => {
-    if (!selectedScorePrediction) {
-      return;
-    }
-
-    if (
-      !selectedScorePrediction.home_score &&
-      selectedScorePrediction.home_score !== 0
-    ) {
-      toast.error("Home score is required");
-      return;
-    }
-
-    if (
-      !selectedScorePrediction.away_score &&
-      selectedScorePrediction.away_score !== 0
-    ) {
-      toast.error("Away score is required");
-      return;
-    }
-
-    if (!scoreVoteInput && scoreVoteInput !== "0") {
-      toast.error("Vote count is required");
-      return;
-    }
-
-    const inputVoteCount = parseInt(scoreVoteInput);
-    if (isNaN(inputVoteCount) || inputVoteCount < 0) {
-      toast.error("Please enter a valid vote count");
-      return;
-    }
-
-    scoreVoteMutation.mutate({
-      // score_pred_id: selectedScorePrediction.score_pred_id,
-      home_score: selectedScorePrediction.home_score,
-      away_score: selectedScorePrediction.away_score,
-      vote_count: inputVoteCount,
-    });
-
-    setIsScoreVoteDialogOpen(false);
-  };
 
   if (matchLoading || voteCountsLoading)
     return <div className="p-8">Loading...</div>;
@@ -388,64 +119,6 @@ export default function MatchDetail() {
 
   if (!match) return <div className="p-8">Match not found</div>;
 
-  if (voteCountsError) {
-  }
-
-  const homeVotes = voteCounts?.home_votes || 0;
-  const drawVotes = voteCounts?.draw_votes || 0;
-  const awayVotes = voteCounts?.away_votes || 0;
-  const totalVotes =
-    voteCounts?.total_votes || homeVotes + drawVotes + awayVotes;
-
-  const homePercent =
-    voteCounts?.home_percentage !== undefined
-      ? parseFloat(voteCounts.home_percentage.toFixed(2))
-      : totalVotes > 0
-      ? Math.round((homeVotes / totalVotes) * 10000) / 100
-      : 0;
-  const drawPercent =
-    voteCounts?.draw_percentage !== undefined
-      ? parseFloat(voteCounts.draw_percentage.toFixed(2))
-      : totalVotes > 0
-      ? Math.round((drawVotes / totalVotes) * 10000) / 100
-      : 0;
-  const awayPercent =
-    voteCounts?.away_percentage !== undefined
-      ? parseFloat(voteCounts.away_percentage.toFixed(2))
-      : totalVotes > 0
-      ? Math.round((awayVotes / totalVotes) * 10000) / 100
-      : 0;
-
-  const totalScorePredictions =
-    scorePredictions?.reduce((sum, pred) => sum + pred.votes, 0) || 0;
-
-  const getPredictionType = (homeScore: number, awayScore: number) => {
-    if (homeScore > awayScore)
-      return { label: "Home", color: "text-green-500" };
-    if (awayScore > homeScore) return { label: "Away", color: "text-red-500" };
-    return { label: "Draw", color: "text-blue-500" };
-  };
-
-  const showDraw = match.allow_draw !== false;
-
-  const generateCommentWithAI = async () => {
-    if (!match) return;
-
-    try {
-      const aiComment = await generateAIComment({
-        homeTeam: match.home_team?.name || "",
-        awayTeam: match.away_team?.name || "",
-        league: match.leagues?.name || "",
-        matchDate: new Date(match.match_date).toLocaleDateString(),
-      });
-
-      setCommentText(aiComment);
-      toast.success("AI comment generated!");
-    } catch (error: any) {
-      toast.error("Failed to generate AI comment");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -454,567 +127,26 @@ export default function MatchDetail() {
           Back to matches
         </Button>
 
-        {/* Match Header */}
-        <Fragment>
-          <div className="flex justify-center">
-            <span className="inline-flex items-center px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              {match.league?.name}
-            </span>
-          </div>
+        <MatchHeader match={match} />
 
-          <div className="flex items-center justify-center gap-8 py-8">
-            <div className="text-center space-y-2">
-              <div className="w-24 h-24 mx-auto bg-card rounded-lg p-4 flex items-center justify-center">
-                {match.home_team?.logo_url ? (
-                  <img
-                    src={match.home_team.logo_url}
-                    alt={match.home_team.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-2xl font-bold">
-                    {match.home_team_name}
-                  </div>
-                )}
-              </div>
-              <div className="font-semibold text-lg">
-                {match.home_team_name}
-              </div>
-              <div className="text-sm text-muted-foreground">Home</div>
-            </div>
+        <VotingPanel
+          matchId={matchIdNum}
+          match={match}
+          voteCounts={voteCounts}
+        />
 
-            <div className="text-4xl font-bold text-muted-foreground">VS</div>
+        <ScorePredictionCard
+          matchId={matchIdNum}
+          match={match}
+          scorePredictions={scorePredictions}
+        />
 
-            <div className="text-center space-y-2">
-              <div className="w-24 h-24 mx-auto bg-card rounded-lg p-4 flex items-center justify-center">
-                {match.away_team?.logo_url ? (
-                  <img
-                    src={match.away_team.logo_url}
-                    alt={match.away_team.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-2xl font-bold">
-                    {match.away_team.name}
-                  </div>
-                )}
-              </div>
-              <div className="font-semibold text-lg">
-                {match.away_team.name}
-              </div>
-              <div className="text-sm text-muted-foreground">Away</div>
-            </div>
-          </div>
-
-          {/* Match details */}
-          <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-            <div>📅 {formatDate(match.kickoff, "EEEE, MMMM d, yyyy")}</div>
-            <div>🕐 {formatDate(match.kickoff, "HH:mm")}</div>
-            <div>📍 {match.venue}</div>
-          </div>
-        </Fragment>
-
-        {/* Voting section */}
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Cast Your Vote</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="w-4 h-4" />
-              {totalVotes.toLocaleString()} total votes
-            </div>
-          </div>
-          <div
-            className={
-              showDraw ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"
-            }
-          >
-            <div
-              className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => openVoteDialog("home")}
-            >
-              <div className="font-bold text-green-500">
-                {match.home_team_name}
-              </div>
-              <div className="text-2xl font-bold mt-2">{homePercent}%</div>
-              <div className="text-sm text-muted-foreground">
-                {homeVotes.toLocaleString()} votes
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Click to vote
-              </div>
-            </div>
-
-            {showDraw && (
-              <div
-                className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors bg-white"
-                onClick={() => openVoteDialog("draw")}
-              >
-                <div className="font-bold text-black">Draw</div>
-                <div className="text-2xl font-bold mt-2 text-black">
-                  {drawPercent}%
-                </div>
-                <div className="text-sm text-black/70">
-                  {drawVotes.toLocaleString()} votes
-                </div>
-                <div className="text-xs text-black/70 mt-1">Click to vote</div>
-              </div>
-            )}
-
-            <div
-              className="border rounded-lg p-4 text-center cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => openVoteDialog("away")}
-            >
-              <div className="font-bold text-blue-500">
-                {match.away_team.name}
-              </div>
-              <div className="text-2xl font-bold mt-2">{awayPercent}%</div>
-              <div className="text-sm text-muted-foreground">
-                {awayVotes.toLocaleString()} votes
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Click to vote
-              </div>
-            </div>
-          </div>
-
-          {/* Vote Dialog */}
-          <Dialog open={isVoteDialogOpen} onOpenChange={setIsVoteDialogOpen}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedOutcome === "home" &&
-                    `Vote for ${match.home_team_name}`}
-                  {selectedOutcome === "draw" && "Vote for Draw"}
-                  {selectedOutcome === "away" &&
-                    `Vote for ${match.away_team.name}`}
-                </DialogTitle>
-                <DialogDescription>
-                  Enter the total number of votes (will replace current votes)
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">
-                    Current admin votes:{" "}
-                    {selectedOutcome === "home"
-                      ? (voteCounts?.uu_votes?.home ?? 0).toLocaleString()
-                      : selectedOutcome === "draw"
-                      ? (voteCounts?.uu_votes?.draw ?? 0).toLocaleString()
-                      : (voteCounts?.uu_votes?.away ?? 0).toLocaleString()}
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="Enter vote count (e.g., 5000)"
-                    value={voteInput}
-                    onChange={(e) => setVoteInput(e.target.value)}
-                    className="mt-2"
-                    min="0"
-                  />
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Current distribution: Home {homeVotes.toLocaleString()} (
-                  {homePercent}%), Draw {drawVotes.toLocaleString()} (
-                  {drawPercent}%), Away {awayVotes.toLocaleString()} (
-                  {awayPercent}%)
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsVoteDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleVoteSubmit}
-                    disabled={
-                      !voteInput ||
-                      isNaN(parseInt(voteInput)) ||
-                      parseInt(voteInput) < 0
-                    }
-                  >
-                    Update Votes
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Progress bar - hidden when draw is not allowed */}
-          {showDraw && (
-            <div className="space-y-2">
-              <div className="flex h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-green-500"
-                  style={{ width: `${homePercent}%` }}
-                />
-                <div
-                  className="bg-white"
-                  style={{ width: `${drawPercent}%` }}
-                />
-                <div
-                  className="bg-blue-500"
-                  style={{ width: `${awayPercent}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{match.home_team.name}</span>
-                <span>Draw</span>
-                <span>{match.away_team.name}</span>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        {/* Score predictions */}
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">⚽ Score Predictions</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="w-4 h-4" />
-              {totalScorePredictions} votes
-            </div>
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            Select your predicted final score
-          </p>
-
-          {/* Dialog Trigger for Score Prediction */}
-          <Dialog open={isScoreDialogOpen} onOpenChange={setIsScoreDialogOpen}>
-            <DialogTrigger asChild>
-              <div
-                className="cursor-pointer border rounded-lg p-4 hover:bg-accent transition-colors"
-                onClick={() => setIsScoreDialogOpen(true)}
-              >
-                <p className="text-center text-muted-foreground">
-                  Click to predict the score
-                </p>
-              </div>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Predict the Score</DialogTitle>
-                <DialogDescription>
-                  Enter your predicted final score for this match
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-center">
-                    <div className="font-medium">
-                      {match.home_team_name}
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={customScore.home}
-                      onChange={(e) =>
-                        setCustomScore({ ...customScore, home: e.target.value })
-                      }
-                      className="w-20 text-center text-2xl"
-                      min="0"
-                    />
-                  </div>
-                  <div className="text-3xl font-bold">-</div>
-                  <div className="text-center">
-                    <div className="font-medium">
-                      {match.away_team.name}
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={customScore.away}
-                      onChange={(e) =>
-                        setCustomScore({ ...customScore, away: e.target.value })
-                      }
-                      className="w-20 text-center text-2xl"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsScoreDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleScoreSubmit}
-                    disabled={!customScore.home || !customScore.away}
-                  >
-                    Submit Prediction
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Score Vote Dialog */}
-          <Dialog
-            open={isScoreVoteDialogOpen}
-            onOpenChange={setIsScoreVoteDialogOpen}
-          >
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Update Score Prediction</DialogTitle>
-                <DialogDescription>
-                  Set the admin vote count for this score prediction
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-center">
-                    <div className="font-medium">
-                      {match.home_team_name}
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="Home score"
-                      value={selectedScorePrediction?.home_score ?? ""}
-                      onChange={(e) =>
-                        setSelectedScorePrediction({
-                          ...selectedScorePrediction,
-                          home_score:
-                            e.target.value === ""
-                              ? ""
-                              : parseInt(e.target.value),
-                        })
-                      }
-                      className="w-20 text-center text-2xl mt-2"
-                      min="0"
-                      required
-                    />
-                  </div>
-                  <div className="text-3xl font-bold">-</div>
-                  <div className="text-center">
-                    <div className="font-medium">
-                      {match.away_team.name}
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="Away score"
-                      value={selectedScorePrediction?.away_score ?? ""}
-                      onChange={(e) =>
-                        setSelectedScorePrediction({
-                          ...selectedScorePrediction,
-                          away_score:
-                            e.target.value === ""
-                              ? ""
-                              : parseInt(e.target.value),
-                        })
-                      }
-                      className="w-20 text-center text-2xl mt-2"
-                      min="0"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">
-                    Current Admin Votes:{" "}
-                    {selectedScorePrediction?.uu_votes?.toLocaleString() ||
-                      0}
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="Enter admin vote count (e.g., 5000)"
-                    value={scoreVoteInput}
-                    onChange={(e) => setScoreVoteInput(e.target.value)}
-                    className="mt-2"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Note: This will replace the current admin vote count
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsScoreVoteDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleScoreVoteSubmit}
-                    disabled={
-                      (!selectedScorePrediction?.home_score &&
-                        selectedScorePrediction?.home_score !== 0) ||
-                      (!selectedScorePrediction?.away_score &&
-                        selectedScorePrediction?.away_score !== 0) ||
-                      (!scoreVoteInput && scoreVoteInput !== "0") ||
-                      isNaN(parseInt(scoreVoteInput)) ||
-                      parseInt(scoreVoteInput) < 0
-                    }
-                  >
-                    Update Votes
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Score prediction list */}
-          <div className="space-y-2">
-            {scorePredictions?.map((pred, idx) => {
-              const predType = getPredictionType(
-                pred.home_score,
-                pred.away_score
-              );
-              return (
-                <div
-                  key={pred.score_pred_id}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => openScoreVoteDialog(pred)}
-                >
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
-                    {idx + 1}
-                  </div>
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="font-bold">
-                      {match.home_team_name}
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {pred.home_score}
-                    </span>
-                    <span className="text-muted-foreground">VS</span>
-                    <span className="text-2xl font-bold">
-                      {pred.away_score}
-                    </span>
-                    <span className="font-bold">
-                      {match.away_team.name}
-                    </span>
-                  </div>
-                  <div
-                    className={`ml-auto text-sm font-medium px-3 py-1 rounded-full ${predType.color} bg-current/10`}
-                  >
-                    {predType.label}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold">{pred.percent}%</div>
-                    <div className="text-xs text-muted-foreground">
-                      {pred.votes.toLocaleString()} votes
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Discussion */}
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            <h2 className="text-xl font-semibold">Discussion</h2>
-            <span className="text-sm text-muted-foreground">
-              ({comments?.length || 0} comments)
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <Select onValueChange={(value) => setUserName(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user: any) => (
-                    <SelectItem key={user.user_id} value={user.name}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={generateCommentWithAI}
-                title="Generate AI comment"
-              >
-                <Sparkles className="w-4 h-4" />
-              </Button>
-            </div>
-            <Textarea
-              placeholder="Share your prediction or thoughts..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              rows={4}
-              maxLength={1000}
-            />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <EmojiPicker
-                  onEmojiSelect={(emoji) =>
-                    setCommentText((prev) => prev + emoji)
-                  }
-                />
-                <span
-                  className={`text-xs transition-colors duration-200 ${
-                    commentText.length > 900
-                      ? "text-red-500"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {commentText.length}/1000 characters
-                </span>
-              </div>
-              <Button
-                onClick={() => commentMutation.mutate()}
-                disabled={!userName.trim() || !commentText.trim()}
-                className="gap-2"
-              >
-                Post Comment
-              </Button>
-            </div>
-          </div>
-
-          {comments && comments.length > 0 ? (
-            <div className="space-y-3 pt-4">
-              {comments.map((comment) => {
-                const commentParts = comment.comment_text.split(": ");
-                const userName =
-                  commentParts.length > 1 ? commentParts[0] : "Unknown User";
-                const commentContent =
-                  commentParts.length > 1
-                    ? commentParts.slice(1).join(": ")
-                    : comment.comment_text;
-
-                const mockUser = {
-                  user_id: comment.user_id,
-                  name: userName,
-                  email: `${userName
-                    .toLowerCase()
-                    .replace(/\s+/g, ".")}@example.com`,
-                };
-
-                return (
-                  <div
-                    key={comment.comment_id}
-                    className="p-4 rounded-lg bg-card border flex gap-3"
-                  >
-                    <UserAvatar user={mockUser as any} size="sm" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{userName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(comment.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{commentContent}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>No comments yet. Be the first to share your thoughts!</p>
-            </div>
-          )}
-        </Card>
+        <CommentsSection
+          matchId={matchIdNum}
+          match={match}
+          comments={comments}
+          users={users}
+        />
       </div>
     </div>
   );
