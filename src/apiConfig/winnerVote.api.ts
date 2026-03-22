@@ -49,7 +49,7 @@ export const createAdminVote = async (data: {
   user_id: number;
   vote_count: number;
 }) => {
-  const res = await apiConfig.post(`/winner-votes/admin/vote`, data);
+  const res = await apiConfig.post(`/winner-votes/admin/vote/key`, data);
   return res?.data;
 };
 
@@ -58,7 +58,7 @@ export const updateAdminVote = async (
   data: { vote_count?: number; team_id?: number }
 ) => {
   const res = await apiConfig.put(
-    `/winner-votes/admin/vote/${voteId}`,
+    `/winner-votes/admin/vote/${voteId}/key`,
     data
   );
   return res?.data;

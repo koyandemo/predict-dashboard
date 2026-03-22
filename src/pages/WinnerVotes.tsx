@@ -210,6 +210,7 @@ export default function AdminWinnerVotesPage() {
                   </Button>
                   <button
                     className="adm-cta-btn adm-cta-btn--sm"
+                    type="button"
                     onClick={handleCreateVote}
                     disabled={createVoteMutation.isPending}
                   >
@@ -504,7 +505,7 @@ function VoteForm({
           onChange={(e) =>
             setFormData({
               ...formData,
-              vote_count: parseInt(e.target.value) || 0,
+              vote_count: e.target.value,
             })
           }
           className="adm-input"

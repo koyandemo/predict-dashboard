@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Contacts from "./pages/Contacts";
 import WinnerVotes from "./pages/WinnerVotes";
+import TeamStanding from "./pages/TeamStanding";
 
 
 const queryClient = new QueryClient({
@@ -67,6 +68,16 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Teams />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/team-standings"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <TeamStanding />
                   </DashboardLayout>
                 </ProtectedRoute>
               }

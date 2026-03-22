@@ -23,6 +23,7 @@ const menuItems = [
   { title: "Teams", url: "/teams", icon: Users },
   { title: "Matches", url: "/matches", icon: Calendar },
   { title: "Winner Votes", url: "/winner-votes", icon: Trophy },
+  { title: "Team Standing", url: "/team-standings", icon: Trophy },
   { title: "Users", url: "/users", icon: Users },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },

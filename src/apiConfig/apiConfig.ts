@@ -20,8 +20,9 @@ apiConfig.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response ? error.response.status : null;
+    console.log(status, "Response Error Status:", error.response);
     if (status === 401) {
-      window.location.assign("/login");
+      // window.location.assign("/login");
     } else if (status === 404) {
       // Handle not found errors
     } else {
