@@ -75,7 +75,6 @@ export default function TeamStanding() {
       item.id === selected.id ? selected : item
     );
     const res = await putTeamStandings(selected.id, selected);
-    console.log(res);
     setData(updated);
     setOpen(false);
 
