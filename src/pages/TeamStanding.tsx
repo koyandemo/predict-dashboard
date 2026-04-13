@@ -52,6 +52,7 @@ export default function TeamStanding() {
   const fetchTeamStandings = async () => {
     try{
       const res = await getAllTeamStandings();
+      console.log(res.data,"55")
       setData(res.data);
     }catch(err){
       console.error(err);

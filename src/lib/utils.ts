@@ -1,9 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export const FIFA_CLUB_WORLD_CUP_LEAGUE_ID = 16;
-export const FIFA_WORLD_CUP_LEAGUE_SEASON_ID=17;
-export const FIFA_WORLD_CUP_SEASON_ID=6;
+export const FIFA_CLUB_WORLD_CUP_LEAGUE_ID = 1;
+export const FIFA_WORLD_CUP_LEAGUE_SEASON_ID=1;
+export const FIFA_WORLD_CUP_SEASON_ID=1;
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

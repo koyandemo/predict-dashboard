@@ -43,14 +43,13 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
-  Upload,
   Check,
   ChevronsUpDown,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { cn, FIFA_CLUB_WORLD_CUP_LEAGUE_ID, FIFA_WORLD_CUP_SEASON_ID } from "@/lib/utils";
+import { cn, FIFA_WORLD_CUP_SEASON_ID } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllLeagues } from "@/apiConfig/league.api";
 import { getAllTeams } from "@/apiConfig/team.api";
