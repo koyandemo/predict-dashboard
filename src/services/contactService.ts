@@ -1,4 +1,3 @@
-import { Contact } from '../interfaces';
 import { BaseService, ApiResponse } from './BaseService';
 
 // Create instance of BaseService
@@ -65,22 +64,22 @@ export const getContactById = async (id: number): Promise<ApiResponse<ContactApi
   return await baseService.getById<ContactApiResponse>('contacts', id);
 };
 
-// Update a contact
-export const updateContact = async (
-  id: number, 
-  contactData: Partial<Contact>
-): Promise<ApiResponse<ContactApiResponse>> => {
-  return await baseService.update<ContactApiResponse>('contacts', id, contactData);
-};
+// // Update a contact
+// export const updateContact = async (
+//   id: number, 
+//   contactData: Partial<Contact>
+// ): Promise<ApiResponse<ContactApiResponse>> => {
+//   return await baseService.update<ContactApiResponse>('contacts', id, contactData);
+// };
 
-// Delete a contact
-export const deleteContact = async (id: number): Promise<ApiResponse<any>> => {
-  return await baseService.delete('contacts', id);
-};
+// // Delete a contact
+// export const deleteContact = async (id: number): Promise<ApiResponse<any>> => {
+//   return await baseService.delete('contacts', id);
+// };
 
-// Create a new contact (for completeness, though this is typically a public endpoint)
-export const createContact = async (
-  contactData: Omit<Contact, 'contact_id'>
-): Promise<ApiResponse<ContactApiResponse>> => {
-  return await baseService.create<ContactApiResponse>('contacts', contactData);
-};
+// // Create a new contact (for completeness, though this is typically a public endpoint)
+// export const createContact = async (
+//   contactData: Omit<Contact, 'contact_id'>
+// ): Promise<ApiResponse<ContactApiResponse>> => {
+//   return await baseService.create<ContactApiResponse>('contacts', contactData);
+// };

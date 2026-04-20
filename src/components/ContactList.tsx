@@ -27,20 +27,19 @@ import {
 import { 
   getAllContacts, 
   getContactById, 
-  deleteContact,
   ContactApiResponseWithPagination
 } from '../services/contactService';
-import { Contact } from '../interfaces';
 import { toast } from 'sonner';
+import { ContactT } from '@/types/contact.type';
 
 interface ContactListProps {
   refreshTrigger?: boolean;
 }
 
 export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<ContactT[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactT | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
@@ -52,9 +51,8 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
     try {
       setLoading(true);
       const response: ContactApiResponseWithPagination = await getAllContacts({ page, limit: 10 });
-      
       if (response.success && response.data) {
-        setContacts(response.data);
+        setContacts(response.data?.data);
         if (response.pagination) {
           setTotalPages(response.pagination.total_pages);
           setTotalContacts(response.pagination.total);
@@ -74,48 +72,48 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
     fetchContacts();
   }, [page, refreshTrigger]);
 
-  const handleViewDetail = async (contactId: number) => {
-    try {
-      const response = await getContactById(contactId);
+  // const handleViewDetail = async (contactId: number) => {
+  //   try {
+  //     const response = await getContactById(contactId);
       
-      if (response.success && response.data) {
-        setSelectedContact(response.data);
-        setIsDetailOpen(true);
-      } else {
-        toast.error(response.message || 'Failed to fetch contact details');
-      }
-    } catch (error) {
-      console.error('Error fetching contact details:', error);
-      toast.error('Failed to fetch contact details');
-    }
-  };
+  //     if (response.success && response.data) {
+  //       setSelectedContact(response.data);
+  //       setIsDetailOpen(true);
+  //     } else {
+  //       toast.error(response.message || 'Failed to fetch contact details');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching contact details:', error);
+  //     toast.error('Failed to fetch contact details');
+  //   }
+  // };
 
-  const handleDeleteClick = (contactId: number) => {
-    setContactToDelete(contactId);
-    setIsDeleteDialogOpen(true);
-  };
+  // const handleDeleteClick = (contactId: number) => {
+  //   setContactToDelete(contactId);
+  //   setIsDeleteDialogOpen(true);
+  // };
 
-  const confirmDelete = async () => {
-    if (contactToDelete === null) return;
+  // const confirmDelete = async () => {
+  //   if (contactToDelete === null) return;
 
-    try {
-      const response = await deleteContact(contactToDelete);
+  //   try {
+  //     const response = await deleteContact(contactToDelete);
       
-      if (response.success) {
-        toast.success('Contact deleted successfully');
-        setContacts(prev => prev.filter(contact => contact.contact_id !== contactToDelete));
-        setTotalContacts(prev => prev - 1);
-      } else {
-        toast.error(response.message || 'Failed to delete contact');
-      }
-    } catch (error) {
-      console.error('Error deleting contact:', error);
-      toast.error('Failed to delete contact');
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setContactToDelete(null);
-    }
-  };
+  //     if (response.success) {
+  //       toast.success('Contact deleted successfully');
+  //       setContacts(prev => prev.filter(contact => contact.contact_id !== contactToDelete));
+  //       setTotalContacts(prev => prev - 1);
+  //     } else {
+  //       toast.error(response.message || 'Failed to delete contact');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error deleting contact:', error);
+  //     toast.error('Failed to delete contact');
+  //   } finally {
+  //     setIsDeleteDialogOpen(false);
+  //     setContactToDelete(null);
+  //   }
+  // };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -147,18 +145,18 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
               <TableHead>Title</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {/* <TableHead className="text-right">Actions</TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
             {contacts.length > 0 ? (
               contacts.map((contact) => (
-                <TableRow key={contact.contact_id}>
-                  <TableCell className="font-medium">{contact.contact_id}</TableCell>
+                <TableRow key={contact.id}>
+                  <TableCell className="font-medium">{contact.id}</TableCell>
                   <TableCell className="max-w-xs truncate">{contact.title}</TableCell>
                   <TableCell>{contact.email}</TableCell>
                   <TableCell>{formatDate(contact.created_at)}</TableCell>
-                  <TableCell className="text-right">
+                  {/* <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
@@ -175,7 +173,7 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
                         Delete
                       </Button>
                     </div>
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               ))
             ) : (
@@ -224,7 +222,7 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">ID</h3>
-                <p>{selectedContact.contact_id}</p>
+                <p>{selectedContact.id}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Title</h3>
@@ -243,10 +241,10 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
                   <h3 className="text-sm font-medium text-muted-foreground">Created At</h3>
                   <p>{formatDate(selectedContact.created_at)}</p>
                 </div>
-                <div>
+                {/* <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Updated At</h3>
                   <p>{formatDate(selectedContact.updated_at)}</p>
-                </div>
+                </div> */}
               </div>
             </div>
           )}
@@ -254,7 +252,7 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -269,7 +267,7 @@ export const ContactList: React.FC<ContactListProps> = ({ refreshTrigger }) => {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </div>
   );
 };
