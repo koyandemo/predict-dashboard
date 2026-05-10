@@ -785,7 +785,7 @@ export default function Matches() {
                     {match.league ? match.league.name : "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {match.home_team_name}
+                    {match.home_team.name}
                   </TableCell>
                   <TableCell className="font-medium">
                     {match.away_team.name}

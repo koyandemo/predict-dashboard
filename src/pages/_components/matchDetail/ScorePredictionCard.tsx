@@ -13,12 +13,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postAdminScorePredictions, postScoreOption } from "@/apiConfig/match.api";
+import {
+  postAdminScorePredictions,
+  postScoreOption,
+} from "@/apiConfig/match.api";
 import { MatchT, ScorePredictionT } from "@/types/match.type";
 
 interface ScorePredictionCardProps {
   matchId: number;
-  match:MatchT;
+  match: MatchT;
   scorePredictions?: ScorePredictionT[];
 }
 
@@ -37,7 +40,8 @@ export default function ScorePredictionCard({
   const [customScore, setCustomScore] = useState({ home: "", away: "" });
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
   const [isScoreVoteDialogOpen, setIsScoreVoteDialogOpen] = useState(false);
-  const [selectedScorePrediction, setSelectedScorePrediction] = useState<any>(null);
+  const [selectedScorePrediction, setSelectedScorePrediction] =
+    useState<any>(null);
   const [scoreVoteInput, setScoreVoteInput] = useState("");
 
   const totalScorePredictions =
@@ -51,11 +55,16 @@ export default function ScorePredictionCard({
       home_score: number;
       away_score: number;
     }) => {
-      const response = await postScoreOption(matchId, { home_score, away_score });
+      const response = await postScoreOption(matchId, {
+        home_score,
+        away_score,
+      });
       if (!response.success) throw new Error(response.error);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchId] });
+      queryClient.invalidateQueries({
+        queryKey: ["scorePredictions", matchId],
+      });
       setCustomScore({ home: "", away: "" });
       toast.success("Score prediction recorded!");
       setIsScoreDialogOpen(false);
@@ -67,15 +76,18 @@ export default function ScorePredictionCard({
 
   const scoreVoteMutation = useMutation({
     mutationFn: async ({
+      score_option_id,
       home_score,
       away_score,
       vote_count,
     }: {
+      score_option_id:number;
       home_score: number;
       away_score: number;
       vote_count: number;
     }) => {
       const response = await postAdminScorePredictions(matchId, {
+        score_option_id,
         home_score,
         away_score,
         vote_count,
@@ -84,8 +96,12 @@ export default function ScorePredictionCard({
       return response;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["scorePredictions", matchId] });
-      await queryClient.refetchQueries({ queryKey: ["scorePredictions", matchId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["scorePredictions", matchId],
+      });
+      await queryClient.refetchQueries({
+        queryKey: ["scorePredictions", matchId],
+      });
       toast.success("Score prediction votes updated!");
       setScoreVoteInput("");
       setSelectedScorePrediction(null);
@@ -141,6 +157,7 @@ export default function ScorePredictionCard({
     }
 
     scoreVoteMutation.mutate({
+      score_option_id: selectedScorePrediction.id,
       home_score: selectedScorePrediction.home_score,
       away_score: selectedScorePrediction.away_score,
       vote_count: inputVoteCount,
@@ -213,7 +230,10 @@ export default function ScorePredictionCard({
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsScoreDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsScoreDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button
@@ -228,7 +248,10 @@ export default function ScorePredictionCard({
       </Dialog>
 
       {/* Score Vote Dialog */}
-      <Dialog open={isScoreVoteDialogOpen} onOpenChange={setIsScoreVoteDialogOpen}>
+      <Dialog
+        open={isScoreVoteDialogOpen}
+        onOpenChange={setIsScoreVoteDialogOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Update Score Prediction</DialogTitle>
